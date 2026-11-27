@@ -4,7 +4,7 @@
 **Game folder:** `terrace_and_rose/` (Godot 4.5.1). The older web prototype in the repo root (`src/`, `server/`) is kept but no longer developed.
 
 ## Play it
-- **Download:** GitHub → Actions → "Terrace & Rose desktop builds" → latest green run → Artifacts → TerraceAndRose-Windows / -Linux.
+- **Download:** GitHub → Actions → "Terrace & Rose desktop builds" → latest run → Artifacts → TerraceAndRose-macOS, TerraceAndRose-Linux or TerraceAndRose-Windows.
 - **Or from source:** install Godot 4.5.1, Import `terrace_and_rose/project.godot`, then press F5.
 
 ## Done
@@ -19,7 +19,7 @@
 5. **Home editor:** open Build to place and remove walls, doors, windows and floors. The preview shows cost and remaining funds. Edits support touch, undo/redo, save and reload.
 6. **Private God Mode:** open it from Pause or Ctrl+Shift+C. Owner-issued codes unlock quick controls, the cheat console and three world snapshots per campaign. Before restore preserves the world you were playing. Normal saves are independent.
 7. **Brineglass Harbor:** use Travel to book the lodge and take the active household there. Search three beach spots, save mid-trip, and check out to return home with a Travel memory.
-8. **CI:** every push to `terrace_and_rose/**` runs all tests and builds Windows and Linux downloads.
+8. **CI:** every push to `terrace_and_rose/**` runs the test suites, then exports and uploads macOS and Linux before starting the Windows export.
 
 ## Tests
 See the commands in `terrace_and_rose/README.md` for headless regression tests and the graphical smoke test. The regression suite now covers construction and snapshot restoration.
@@ -32,4 +32,4 @@ See the commands in `terrace_and_rose/README.md` for headless regression tests a
 ## Known limits
 - The planned desktop release is one adult-only explicit edition. Intimacy fades to black in the current development build. The future online community requires age-appropriate experiences and same-age-group visibility and interaction.
 - Cheat keys: the owner must run `tools/cheat_keys.gd -- init` locally (the private key stays with them) and commit the public key.
-- Builds aren't code-signed, so Windows SmartScreen shows a warning.
+- The macOS development build is ad-hoc signed and has no Apple notarization. The unsigned Windows build may show a SmartScreen warning.
