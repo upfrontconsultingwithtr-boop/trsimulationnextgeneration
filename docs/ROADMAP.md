@@ -1,5 +1,25 @@
 # Terrace & Rose — Roadmap
 
+## Vision: life sim × open-world crime-action
+Two ways to play the same character in the same persistent world:
+- **Home mode** (built in M1): the orbiting camera, needs, family, building, careers and households.
+- **Street mode** (new): a third-person camera you walk, run and drive through an open coastal town:
+  - **Districts:** Terrace Hill homes, the Rose Market downtown, the Brineglass docks, and the industrial edge.
+  - **Vehicles:** cars, scooters and boats you own, borrow or steal.
+  - **Police:** a **Heat** level brings patrols, chases and roadblocks. You can be arrested, and a court case and jail time follow.
+  - **Open-world jobs:** taxi, delivery, Detective cases, and Gangster or crime missions that start anywhere in town.
+  - **Combat:** stylized non-graphic fights and takedowns, with knockouts rather than gore. The police response is part of the fun.
+- **One world:** money, relationships, Heat, injuries and reputation carry over between modes. A raid can hit your house, your kids can hear about your arrest, and a bakery can launder your money.
+- **Scope note:** Street mode is a large build that needs a town-scale map, vehicle physics (Godot's VehicleBody3D, free), traffic and pedestrian AI, and streaming districts. It is planned as milestones S1–S4 below.
+
+### Street mode milestones
+| # | Milestone | Status |
+|---|---|---|
+| S1 | Third-person controller (walk, run, enter lots seamlessly from the street), one district, day/night | ⏳ |
+| S2 | Vehicles: drive, park, own and steal; a simple traffic loop; gas and repair costs | ⏳ |
+| S3 | Heat and police: witnesses, wanted levels, chases, arrest, bail, jail | ⏳ |
+| S4 | Open-world missions: jobs, crime and Detective cases on one shared mission system; four districts | ⏳ |
+
 Status key: ✅ done · 🔨 in progress · ⏳ planned
 
 ## Part 1 milestones
