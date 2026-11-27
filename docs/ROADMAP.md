@@ -28,3 +28,19 @@ Status key: ✅ done · 🔨 in progress · ⏳ planned
 
 ### Free hosting notes for P2-3 (to verify before use)
 The first online test runs locally (two clients plus a local Godot or Node server). Any hosted option needs your explicit approval and must be documented with its limits on capacity, sleep/uptime and storage before use.
+
+## Missions and Case Files (requested; scheduled after P2-1)
+### Missions
+- **Data-driven missions** (`data/missions/*.json`): steps, conditions, choices, rewards and failure states. They are authored with a small in-project mission editor, the same pattern as the lot editor.
+- **Career chains:** each career has 3–5 missions per level. Examples are Baker (wedding catering), Florist (dressing the Park inn), Innkeeper (critic's visit), Detective (Case Files) and Journalist (scoop on a town secret).
+- **Vacation missions:** each destination has 2–3 missions. At Brineglass Harbor these are the lighthouse keeper's lost logbook, a shipwreck beachcombing hunt, and the market tasting rivalry.
+- **Outcomes** feed into money, skills, relationships, household memories and the photo album.
+
+### Case Files: murder mystery mode
+- **Unlocks** through the Detective career, plus special vacation cases.
+- **Gameplay:** examine scenes for clues, interview suspects (their stories can change as they come under pressure), and pin evidence on a case board to link motive, means and opportunity. Then make an accusation. A wrong accusation has story consequences, and there are several endings.
+- **Content rules:**
+  - Cases are **fictionalized and inspired by famous historical cases** (roughly a century old or more, such as classic Victorian and 1920s puzzles).
+  - All names, places and characters are new. No real victims, families or suspects are named, and no recent real crimes are used.
+  - Violence happens off-screen; the focus is on deduction.
+- **Planned first cases (working titles, all original):** *The Lantern Walk Poisoning* (a locked-room style puzzle), *The Harbor Ledger* (insurance fraud gone wrong), *The Greenhouse Alibi* (a timetable puzzle).
