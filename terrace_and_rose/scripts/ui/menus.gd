@@ -13,6 +13,10 @@ signal neighborhood_new(hid: String)
 signal neighborhood_continue
 signal switch_household(hid: String)
 signal toggle_inactive
+signal create_household
+signal edit_household
+signal toggle_aging
+signal adopt_child
 
 var _rebinding := ""
 var _rebind_btns := {}
@@ -20,6 +24,7 @@ var has_save := false
 var has_hood_save := false
 var in_neighborhood := false
 var inactive_on := true
+var show_family_cb: Callable
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -49,6 +54,7 @@ func show_title() -> void:
 	var sub := Label.new(); sub.text = "A life simulation by the sea — Milestone 1: A Day at Alder Bungalow"; sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; v.add_child(sub)
 	var first := _btn(v, "Play the Neighborhood — four families, stories in progress", show_households.bind(false))
 	var hc := _btn(v, "Continue Neighborhood", func(): neighborhood_continue.emit()); hc.disabled = not has_hood_save
+	_btn(v, "Create a Household — move into Willow Lane", func(): create_household.emit())
 	_btn(v, "A Day at Alder Bungalow (new)", show_presets)
 	var cont := _btn(v, "Continue Alder Bungalow", func(): continue_game.emit()); cont.disabled = not has_save
 	_btn(v, "Controls", show_controls.bind(show_title))
@@ -98,6 +104,45 @@ func show_households(switching: bool) -> void:
 	_btn(v, "Back", show_pause if switching else show_title)
 	first.grab_focus.call_deferred()
 
+## Family tree: generations from parent links, plus partners, siblings and friends.
+func show_family(s: Dictionary, hid: String) -> void:
+	_clear(); visible = true
+	var v := _card(760, Control.PRESET_CENTER)
+	v.add_child(UiTheme.title_label("Family tree — %s" % s["households"][hid]["name"], 30))
+	var members: Array = s["households"][hid]["members"]
+	var gen := {}
+	for cid in members: gen[cid] = 0
+	for i in 6:
+		for t in s["family"]:
+			if t["type"] in ["parent_of", "grandparent_of", "stepparent_of"] and gen.has(t["b"]):
+				var base: int = gen.get(t["a"], -1)
+				if base >= 0: gen[t["b"]] = maxi(gen[t["b"]], base + (2 if t["type"] == "grandparent_of" else 1))
+	var levels := {}
+	for cid in gen: levels.get_or_add(gen[cid], []).append(cid)
+	var keys := levels.keys(); keys.sort()
+	for g in keys:
+		var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 10); v.add_child(row)
+		var tag := Label.new(); tag.text = "Generation %d" % (g + 1); tag.custom_minimum_size.x = 130; tag.add_theme_color_override("font_color", Palette.TERRACOTTA); row.add_child(tag)
+		for cid in levels[g]:
+			var c: Dictionary = s["characters"][cid]
+			var p := PanelContainer.new(); row.add_child(p)
+			var l := Label.new(); l.text = "%s\n%s · %s%s" % [c["name"], c["age"], c["pronouns"], "\nadopted" if c.get("adopted", false) else ("\nDNA: both parents" if c.has("genes") else "")]
+			p.add_child(l)
+	v.add_child(UiTheme.title_label("Ties", 20))
+	for t in s["family"]:
+		if members.has(t["a"]) or members.has(t["b"]):
+			var l := Label.new(); l.add_theme_font_size_override("font_size", 15)
+			var rel: Dictionary = s["relationships"].get(GameState.rel_key(t["a"], t["b"]), {})
+			l.text = "%s — %s — %s   (friendship %d%s)" % [s["characters"][t["a"]]["name"], String(t["type"]).replace("_of", " of").replace("_", " "), s["characters"][t["b"]]["name"], int(rel.get("friendship", 0)), (", romance %d" % int(rel.get("romance", 0))) if int(rel.get("romance", 0)) > 0 else ""]
+			v.add_child(l)
+	for p in s.get("pregnancies", []):
+		if members.has(p["carrier"]):
+			var l := Label.new(); l.text = "Expecting: %s (due Day %d)" % [s["characters"][p["carrier"]]["name"], int(p["due"]) / 1440 + 1]; v.add_child(l)
+	var row2 := HBoxContainer.new(); v.add_child(row2)
+	_btn(row2, "Adopt a child (%s)" % Catalog.format_cents(FamilyLife.ADOPTION_FEE), func(): adopt_child.emit())
+	_btn(row2, "Aging: %s" % ("On" if bool(s["settings"].get("aging", false)) else "Off"), func(): toggle_aging.emit())
+	_btn(row2, "Back", show_pause)
+
 func show_pause() -> void:
 	_clear(); visible = true
 	var v := _card(380, Control.PRESET_CENTER)
@@ -107,6 +152,8 @@ func show_pause() -> void:
 	_btn(v, "Load (%s)" % InputConfig.label("quick_load"), func(): load_requested.emit())
 	if in_neighborhood:
 		_btn(v, "Switch household", show_households.bind(true))
+		_btn(v, "Edit household", func(): edit_household.emit())
+		_btn(v, "Family tree", func(): show_family_cb.call())
 		_btn(v, "Inactive households progress: %s" % ("On" if inactive_on else "Off"), func(): toggle_inactive.emit())
 	_btn(v, "Controls", show_controls.bind(show_pause))
 	_btn(v, "Quit to title", func(): quit_to_title.emit())

@@ -50,7 +50,7 @@ func _build(ch: Dictionary) -> void:
 		holding_mesh = MeshInstance3D.new()
 		var plate := CylinderMesh.new(); plate.top_radius = 0.13; plate.bottom_radius = 0.1; plate.height = 0.03
 		holding_mesh.mesh = plate; holding_mesh.material_override = Palette.get_mat("ceramic")
-		holding_mesh.position = Vector3(0, 1.0, 0.32); add_child(holding_mesh)
+		holding_mesh.position = Vector3(0, 1.0, 0.32); holding_mesh.visible = false; add_child(holding_mesh)
 
 func _target_pos(ch: Dictionary) -> Vector3:
 	var a: Array = ch["anchor"]

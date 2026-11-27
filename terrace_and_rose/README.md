@@ -16,10 +16,14 @@ It is offline and desktop-first, uses local saves, and costs $0 to develop: no p
 godot --headless --path . --import                  # first time only: builds the class cache (see note)
 godot --headless --path . -s tests/lint.gd          # every script parses and type-checks
 godot --headless --path . -s tests/run_tests.gd     # Milestone-1 regression suite (69 checks)
-godot --headless --path . -s tests/genetics_tests.gd   # Part 2 genetics (child DNA) checks
+godot --headless --path . -s tests/genetics_tests.gd       # child DNA (6 checks)
+godot --headless --path . -s tests/neighborhood_tests.gd   # 4 households, stories, switching, migration (34 checks)
+godot --headless --path . -s tests/family_tests.gd         # creator, ties, adoption, pregnancy/birth, aging, cheats (31 checks)
 # graphical smoke test: plays the whole day (11 checks) and writes 12 screenshots to build/smoke/
 godot --path . -- --smoke
 godot --path . -- --shots          # quick visual check: 3 screenshots (HUD, sleep, furnish)
+godot --path . -- --hood           # neighborhood: household picker, story moment, all four homes
+godot --path . -- --creator        # creator, DNA child, Willow Lane move-in, family tree, cheat console
 # on a machine without a GPU (Linux CI):
 xvfb-run -a godot --path . --rendering-driver opengl3 --rendering-method gl_compatibility -- --smoke
 ```
@@ -28,6 +32,26 @@ Each command exits with code 0 on success.
 Note: `AssetLoader` uses Godot's imported resources when they exist, as in the editor and in exported builds. Otherwise it loads the
 raw GLB/PNG/WAV directly, so a fresh checkout runs even before the first import. The editable `.blend` sources are
 excluded from Godot's importer (`assets/source/.gdignore`). Otherwise Godot tries to launch Blender to import them, which can hang.
+
+## The neighborhood (Part 2)
+From the start menu you can:
+- **Play the Neighborhood** as the Rowans, the Park sisters, the Bells or the Alvarezes. Each family is mid-story, and the storylines cross. They are defined in `data/stories.json`, which you can edit to add new story moments.
+- **Create a Household:** names, pronouns (including your own), life stage, body, skin, hair texture and colour, outfit and colours, traits, aspiration, and "can become pregnant". Use **Make a child from two parents** (with re-roll) to combine two adults' DNA, set relationships, then move into Willow Lane.
+- **Pause menu:** switch household, edit household, family tree (adopt, aging on/off), and toggle "Inactive households progress".
+- **Try for Baby:** click your partner. It appears for adults in a romantic relationship. The moment is off-screen (fade to black), and if it leads to a pregnancy, a baby with DNA from both parents is born 3 days later. Twins happen occasionally.
+
+## Cheat codes (owner-approved access)
+Cheats only work in private worlds. You, as the owner, issue a personal code to each person you approve:
+```bash
+# once: creates YOUR private key outside the repo (keep it secret, back it up) and writes data/cheat_public_key.pem
+godot --headless --path . -s tools/cheat_keys.gd -- init
+# for each person you approve (you, Ricardo, anyone you both choose):
+godot --headless --path . -s tools/cheat_keys.gd -- issue "Ricardo"
+```
+Commit `data/cheat_public_key.pem` and rebuild the game. To use a code in game, press **Ctrl+Shift+C** and enter your name and code once.
+Commands: `money 500`, `needs max`, `time +3`, `speed 2`, `aging on|off`, `ageup <name>`, `pregnant <name>`, `flag <story_flag>`, `skipstory`.
+Codes can't be forged without your private key, and a code only works for the name it was issued to. Because the game is offline, someone
+determined could still modify the program itself, so treat this as access control for friends, not anti-piracy.
 
 ## Desktop builds
 Export templates for 4.5.1 are free from the Godot download page (Editor → Manage Export Templates).

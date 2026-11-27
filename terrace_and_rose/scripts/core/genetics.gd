@@ -50,6 +50,12 @@ static func make_child(a: Dictionary, b: Dictionary, seed: int) -> Dictionary:
 	return {"look": look, "traits": traits, "genes": {"parents": [a.get("id", ""), b.get("id", "")], "seed": seed, "skin_mix": snappedf(t, 0.01), "hair_from": "a" if hair_gene == tex_a else "b"}}
 
 ## How many babies a successful conception produces (twins ~8%, triplets ~1%).
+static func random_look(rng: RandomNumberGenerator) -> Dictionary:
+	var skins := ["f3d6bf", "e8c3a0", "d9a77c", "c08a5e", "a8704a", "8a5537", "6b3e26", "4b2d1e"]
+	var hairs := ["17120f", "2a1d16", "5a3a22", "8a4b2a", "c89a5a", "e6d3a3"]
+	return {"body": BODIES[rng.randi() % 3], "hair": HAIR_FAMILIES[rng.randi() % HAIR_FAMILIES.size()], "skin": skins[rng.randi() % skins.size()],
+		"hair_color": hairs[rng.randi() % hairs.size()], "height": 1.0}
+
 static func litter_size(seed: int) -> int:
 	var rng := RandomNumberGenerator.new(); rng.seed = seed
 	var r := rng.randf()

@@ -64,6 +64,8 @@ static func build() -> Dictionary:
 		look.merge(p[5], true)
 		var c := GameState.make_character(p[0], p[1], look, p[3], p[2], hid, lid, Vector2i(14 + k * 2, 28) if lid != "" else Vector2i(15, 31), p[6], p[7])
 		c["ai"] = "auto"
+		c["can_carry"] = p[0] in ["delia", "june", "iris", "renee", "lucia", "noor"]
+		c["age_days"] = 0
 		s["characters"][p[0]] = c
 		s["households"][hid]["members"].append(p[0])
 	for t in TIES:

@@ -4,6 +4,10 @@ extends Node3D
 const SLOT := "household1"
 const HOOD_SLOT := "neighborhood"
 var story_open := false
+var creator: CreatorUI
+var preview: AvatarView
+var cheat_panel: PanelContainer
+var fade: ColorRect
 var _speed_before := 1
 var sim: Simulation
 var furn: Furnishing
@@ -33,12 +37,16 @@ var smoke_runner: RefCounted   # keep a reference so the coroutine survives its 
 func _ready() -> void:
 	InputConfig.apply()
 	var args := OS.get_cmdline_user_args()
-	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots") or args.has("--hood")
+	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots") or args.has("--hood") or args.has("--creator")
 	var ui := CanvasLayer.new(); add_child(ui)
 	var root := Control.new(); root.theme = UiTheme.make(); root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); root.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(root)
 	hud = Hud.new(); root.add_child(hud); hud.visible = false
 	menus = Menus.new(); root.add_child(menus)
+	creator = CreatorUI.new(); root.add_child(creator); creator.visible = false
+	fade = ColorRect.new(); fade.color = Color(0.08, 0.06, 0.05, 0.0); fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; root.add_child(fade)
 	popup = PopupMenu.new(); root.add_child(popup); popup.id_pressed.connect(_on_popup)
+	cheat_panel = PanelContainer.new(); root.add_child(cheat_panel); cheat_panel.visible = false
+	cheat_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP); cheat_panel.position.y = 80
 	world = WorldView.new(); add_child(world)
 	rig = CameraRig.new(); add_child(rig)
 	focus_marker = MeshInstance3D.new(); var tor := TorusMesh.new(); tor.inner_radius = 0.42; tor.outer_radius = 0.5; focus_marker.mesh = tor
@@ -50,10 +58,11 @@ func _ready() -> void:
 	menus.has_hood_save = saves.has_save(HOOD_SLOT)
 	_show_title_scene("mara")
 	menus.show_title()
-	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--hood")
+	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--hood") or OS.get_cmdline_user_args().has("--creator")
 	if smoke:
 		smoke_runner = SmokeTest.new(self)
-		if OS.get_cmdline_user_args().has("--hood"): smoke_runner.hood()
+		if OS.get_cmdline_user_args().has("--creator"): smoke_runner.creator_flow()
+		elif OS.get_cmdline_user_args().has("--hood"): smoke_runner.hood()
 		elif OS.get_cmdline_user_args().has("--shots"): smoke_runner.quick()
 		else: smoke_runner.run()
 
@@ -90,6 +99,21 @@ func _wire_ui() -> void:
 	menus.switch_household.connect(_switch_household)
 	menus.toggle_inactive.connect(func(): sim.state["settings"]["inactive_progress"] = not bool(sim.state["settings"]["inactive_progress"]); menus.inactive_on = sim.state["settings"]["inactive_progress"]; menus.show_pause())
 	hud.story_choice.connect(_on_story_choice)
+	menus.create_household.connect(_open_creator_new)
+	menus.edit_household.connect(func(): menus.visible = false; _open_creator(sim.state, sim.state["active_household"], true))
+	menus.show_family_cb = func(): menus.show_family(sim.state, sim.state["active_household"])
+	menus.toggle_aging.connect(func(): sim.state["settings"]["aging"] = not bool(sim.state["settings"].get("aging", false)); menus.show_family(sim.state, sim.state["active_household"]))
+	menus.adopt_child.connect(func():
+		var r := FamilyLife.adopt(sim.state, sim.state["active_household"], sim.minute())
+		if r["ok"]:
+			var c: Dictionary = sim.state["characters"][r["id"]]
+			c["lot"] = sim.state["active_lot"]; c["cell"] = sim.controlled()["cell"].duplicate()
+			hud.push_log("done", "Welcome home, %s!" % c["name"]); play("chime_done")
+		else: hud.push_log("error", r["reason"]); play("ui_error")
+		menus.show_family(sim.state, sim.state["active_household"]))
+	creator.preview_changed.connect(_show_preview)
+	creator.finished.connect(_creator_done)
+	creator.cancelled.connect(_creator_cancel)
 	menus.quit_to_title.connect(func(): playing = false; hud.visible = false; menus.has_save = saves.has_save(SLOT); menus.has_hood_save = saves.has_save(HOOD_SLOT); _show_title_scene("mara"); menus.show_title())
 
 # ------------------------------------------------------------------ scenes
@@ -133,6 +157,90 @@ func start_neighborhood(hid: String) -> void:
 	Neighborhood.switch_to(s, hid)
 	_begin(Simulation.new(s))
 	hud.push_log("info", "Welcome to Terrace & Rose. You're playing %s." % s["households"][hid]["name"])
+
+# ------------------------------------------------------------------ creator
+var _creator_new := false
+func _open_creator_new() -> void:
+	var s := Neighborhood.build()
+	var hid := FamilyLife.new_household(s, "The Newcomers")
+	var a := FamilyLife.add_member(s, hid, {"name": "Alex Newcomer", "pronouns": "they/them", "age": "adult", "look": GameState.PRESETS["jin"]["look"].duplicate(true)})
+	sim = Simulation.new(s)
+	world.build(sim, "lot_willow"); world.set_time(11 * 60)
+	_creator_new = true
+	_open_creator(s, hid, false)
+
+func _open_creator(s: Dictionary, hid: String, is_edit: bool) -> void:
+	menus.visible = false; hud.visible = false
+	if is_edit: _creator_new = false; sim.set_speed(0)
+	rig.input_enabled = false
+	rig.focus(Vector3(8.0, 0.9, 8.0), 4.2); rig.pitch = deg_to_rad(-10); rig.yaw = deg_to_rad(0); rig._apply()
+	creator.open(s, hid, is_edit)
+
+func _show_preview(cid: String) -> void:
+	_clear_preview()
+	if cid == "" or not sim.state["characters"].has(cid): return
+	var c: Dictionary = sim.state["characters"][cid].duplicate(true)
+	c["anchor"] = []; c["cell"] = [16, 15]; c["facing"] = 0; c["pose"] = "stand"
+	preview = AvatarView.new(); add_child(preview); preview.setup(c)
+	preview.position = Vector3(8.25, 0, 7.75 if not playing else 7.75)
+	if playing: preview.position = world.house_center + Vector3(0, 0, 2)
+	rig.focus(preview.position + Vector3(0, 0.9 * ({"child": 0.62, "teen": 0.9}.get(c["age"], 1.0)), 0), 4.2)
+
+func _clear_preview() -> void:
+	if preview: preview.queue_free(); preview = null
+
+func _creator_cancel() -> void:
+	creator.visible = false; _clear_preview()
+	if playing and not _creator_new: hud.visible = true; rig.input_enabled = true; sim.set_speed(1)
+	else: playing = false; _show_title_scene("mara"); menus.show_title()
+
+func _creator_done(hid: String) -> void:
+	creator.visible = false; _clear_preview()
+	if _creator_new:
+		var r := FamilyLife.move_in(sim.state, hid, "lot_willow")
+		if not r["ok"]: hud.push_log("error", r["reason"]); return
+		Neighborhood.switch_to(sim.state, hid)
+		_begin(sim)
+		hud.push_log("info", "%s moved into Willow Lane with %s. Press B to furnish your new home." % [sim.household()["name"], Catalog.format_cents(sim.funds())])
+	else:
+		hud.visible = true; rig.input_enabled = true; sim.set_speed(1)
+		hud.push_log("done", "Household saved.")
+
+# ------------------------------------------------------------------ cheats
+func _toggle_cheats() -> void:
+	if cheat_panel.visible: cheat_panel.visible = false; return
+	for c in cheat_panel.get_children(): c.queue_free()
+	var v := VBoxContainer.new(); v.custom_minimum_size.x = 560; cheat_panel.add_child(v)
+	v.add_child(UiTheme.title_label("Cheat console", 22))
+	var out := Label.new(); out.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; out.custom_minimum_size.x = 540
+	if bool(sim.state.get("settings", {}).get("shared", false)):
+		out.text = "Cheats are disabled in shared worlds."; v.add_child(out); cheat_panel.visible = true; return
+	var who := Cheats.unlocked_name()
+	if who == "":
+		if not FileAccess.file_exists(Cheats.PUBLIC_KEY):
+			out.text = "The owner hasn't set up cheat keys yet. See README → Cheat codes."
+			v.add_child(out); cheat_panel.visible = true; return
+		var n := LineEdit.new(); n.placeholder_text = "Your name (as issued)"; v.add_child(n)
+		var code := LineEdit.new(); code.placeholder_text = "Access code"; v.add_child(code)
+		var b := Button.new(); b.text = "Unlock"; v.add_child(b); v.add_child(out)
+		b.pressed.connect(func():
+			if Cheats.unlock(n.text, code.text): _toggle_cheats(); _toggle_cheats()
+			else: out.text = "That code isn't valid for that name.")
+		cheat_panel.visible = true; n.grab_focus.call_deferred(); return
+	out.text = "Access: %s. %s" % [who, Cheats.HELP]
+	var line := LineEdit.new(); line.placeholder_text = "e.g. money 500"
+	line.text_submitted.connect(func(t):
+		var r := Cheats.run(sim.state, t); out.text = r["text"]; line.clear()
+		play("coins" if r["ok"] else "ui_error"))
+	v.add_child(line); v.add_child(out)
+	cheat_panel.visible = true; line.grab_focus.call_deferred()
+
+func _fade_moment(text: String) -> void:
+	hud.push_log("info", text)
+	var tw := create_tween()
+	tw.tween_property(fade, "color:a", 0.96, 0.6)
+	tw.tween_interval(1.4)
+	tw.tween_property(fade, "color:a", 0.0, 0.8)
 
 func _switch_household(hid: String) -> void:
 	var r := Neighborhood.switch_to(sim.state, hid)
@@ -186,6 +294,7 @@ func _process(delta: float) -> void:
 		while acc >= 1.0 and n < 200:
 			acc -= 1.0; n += 1; sim.tick()
 		for e in sim.events:
+			if e["kind"] == "fade": _fade_moment(e["text"]); continue
 			hud.push_log(e["kind"], e["text"])
 			play({"done": "chime_done", "error": "ui_error", "arrive": "knock"}.get(e["kind"], "ui_click"))
 		sim.events.clear()
@@ -194,7 +303,7 @@ func _process(delta: float) -> void:
 		var cooking: bool = sim.controlled()["anim"] == "cook" and sim.controlled()["current"].get("phase", "") == "perform"
 		if cooking and not sfx["sizzle"].playing: sfx["sizzle"].play()
 		elif not cooking and sfx["sizzle"].playing: sfx["sizzle"].stop()
-	if sim:
+	if sim and not creator.visible:
 		world.set_time(sim.minute() if playing else 17 * 60 + 20)
 		world.sync_characters(delta, sim.minute())
 		world.update_cutaway(rig.flat_forward())
@@ -203,7 +312,8 @@ func _process(delta: float) -> void:
 
 # ------------------------------------------------------------------ input
 func _unhandled_input(e: InputEvent) -> void:
-	if story_open: return
+	if e.is_action_pressed("cheat_console") and playing: _toggle_cheats(); return
+	if story_open or cheat_panel.visible or creator.visible: return
 	if not playing or menus.visible: 
 		if playing and e.is_action_pressed("menu"): menus.visible = false; hud.visible = true
 		return
@@ -280,6 +390,8 @@ func _open_menu_for(t: Dictionary, pos: Vector2) -> void:
 		var ch := sim.character(t["id"])
 		popup.add_separator(ch["name"])
 		popup.add_item("Greet %s" % ch["name"]); popup_entries.append(["greet", t["id"]])
+		var el := FamilyLife.baby_eligibility(sim.state, sim.state["controlled"], t["id"])
+		if el["ok"]: popup.add_item("Try for Baby (private moment)"); popup_entries.append(["try_for_baby", t["id"]])
 	else:
 		var f: Dictionary = sim.furniture(lid)[t["id"]]
 		var def := Catalog.get_def(f["item"])

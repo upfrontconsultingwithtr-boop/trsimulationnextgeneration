@@ -13,6 +13,7 @@ const ACTIONS := {
 	"greet": {"label": "Greet", "minutes": 5, "anim": "wave"},
 	"sit": {"label": "Sit", "item": "sit", "minutes": 60, "anim": "sit_idle"},
 	"sleep": {"label": "Sleep", "item": "sleep", "minutes": 480, "anim": "sleep"},
+	"try_for_baby": {"label": "Try for Baby", "minutes": 30, "anim": "idle"},
 }
 const DECAY := {"hunger": 8, "energy": 6, "social": 5, "comfort": 4}
 
@@ -173,6 +174,7 @@ func _on_minute() -> void:
 		if not ev["fired"] and m >= int(ev["at"]):
 			ev["fired"] = true
 			_fire(ev)
+	for e in FamilyLife.update(state): _emit(e["kind"], e["text"])
 	if state.has("story"):
 		for bid in StoryEngine.check(state):
 			_emit("story", StoryEngine.beat(bid)["title"], bid)
@@ -202,7 +204,7 @@ func _step_character(c: Dictionary) -> void:
 		if not _start(c, a): return
 	var cur: Dictionary = c["current"]
 	if cur["phase"] == "approach":
-		if cur["type"] == "greet":
+		if cur["type"] == "greet" or cur["type"] == "try_for_baby":
 			_retarget_greet(c, cur)
 			if c["current"].is_empty(): return
 		if cur["path"].is_empty():
@@ -241,9 +243,12 @@ func _start(c: Dictionary, a: Dictionary) -> bool:
 			if p.is_empty(): return _fail(c, "Can't walk there — no clear path.")
 			p.pop_front(); a["path"] = p; a["phase"] = "approach"
 			return true
-		"greet":
+		"greet", "try_for_baby":
 			var t := character(a["target"])
 			if t.is_empty() or t["lot"] != lid: return _fail(c, "Nobody to greet here.")
+			if type == "try_for_baby":
+				var el := FamilyLife.baby_eligibility(state, c["id"], t["id"])
+				if not el["ok"]: return _fail(c, el["reason"])
 			if t["id"] == c["id"]: return _fail(c, "You can't greet yourself.")
 			var p := _path_next_to(lid, here, GameState.cell_of(t["cell"]))
 			if p.is_empty() and here.distance_to(GameState.cell_of(t["cell"])) > 1.5: return _fail(c, "Can't reach %s." % t["name"])
@@ -335,6 +340,9 @@ func _arrive(c: Dictionary, a: Dictionary) -> void:
 	a["phase"] = "perform"
 	a["remaining"] = int(ACTIONS[type]["minutes"])
 	c["anim"] = ACTIONS[type].get("anim", "idle")
+	if type == "try_for_baby":
+		_emit("fade", "%s and %s share a private moment…" % [c["name"].get_slice(" ", 0), character(a["target"])["name"].get_slice(" ", 0)], c["id"])
+		return
 	if type == "greet":
 		var t := character(a["target"])
 		_face_towards(c, Vector2(GameState.cell_of(t["cell"]) - GameState.cell_of(c["cell"])))
@@ -387,6 +395,12 @@ func _perform_minute(c: Dictionary, a: Dictionary) -> void:
 				state["relationships"][k] = r
 				_emit("done", ("%s met %s. Friendship +10." if first else "%s greeted %s. Friendship +10.") % [c["name"], t["name"]], c["id"])
 		"sit": _emit("done", "%s feels rested after sitting." % c["name"], c["id"])
+		"try_for_baby":
+			var r := FamilyLife.conceive(state, c["id"], a["target"], minute() * 31 + hash(c["id"]) % 997)
+			_need(c, "social", 2500); _need(c, "comfort", 1500)
+			if r.get("pregnant", false): _emit("done", "It's happening — %s is expecting! (due in %d days)" % [character(r["carrier"])["name"], FamilyLife.PREGNANCY_DAYS], c["id"])
+			elif r["ok"]: _emit("info", "Not this time. They can try again.", c["id"])
+			else: _emit("error", r["reason"], c["id"])
 		"sleep": _emit("done", "%s woke up refreshed." % c["name"], c["id"])
 	_finish(c, true)
 
@@ -433,7 +447,7 @@ func _auto_ai(c: Dictionary) -> void:
 	var cid: String = c["id"]
 	if c["holding"] == "meal": queue_action(cid, "eat"); return
 	if int(n["energy"]) < 2500: queue_action(cid, "sleep"); return
-	if int(n["hunger"]) < 4000 and c["age"] != "child": queue_action(cid, "prepare_meal"); return
+	if int(n["hunger"]) < 4000: queue_action(cid, "prepare_meal"); return
 	if int(n["social"]) < 4500:
 		for o in chars_on(c["lot"]):
 			if o["id"] != cid and o["pose"] == "stand": queue_action(cid, "greet", o["id"]); return

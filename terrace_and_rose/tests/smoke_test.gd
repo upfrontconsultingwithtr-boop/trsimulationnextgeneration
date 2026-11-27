@@ -48,6 +48,32 @@ func quick() -> void:
 	await shot("q3_furnish")
 	m.get_tree().quit(0)
 
+func creator_flow() -> void:
+	await wait(3)
+	m._open_creator_new(); await wait(6)
+	await shot("c1_creator_start")
+	var s: Dictionary = m.sim.state
+	var hid: String = m.creator.hid
+	m.creator._add("adult"); await wait(2)
+	var adults: Array = s["households"][hid]["members"]
+	FamilyLife.edit_member(s, adults[0], {"look": {"body": "curvy", "skin": "6b3e26", "hair": "coils", "hair_color": "17120f"}, "can_carry": true})
+	FamilyLife.edit_member(s, adults[1], {"look": {"body": "slender", "skin": "f3d6bf", "hair": "long", "hair_color": "c89a5a"}})
+	FamilyLife.set_tie(s, adults[0], adults[1], "spouse")
+	var kid := FamilyLife.add_child_from_parents(s, adults[0], adults[1], 42)
+	m.creator.sel = kid; m.creator._rebuild(); await wait(8)
+	await shot("c2_creator_dna_child")
+	check(s["characters"][kid]["genes"]["parents"].size() == 2, "creator child has two DNA parents")
+	m.creator.finished.emit(hid); await wait(10)
+	check(m.playing and m.sim.state["active_household"] == hid and m.sim.state["active_lot"] == "lot_willow", "new household moves into Willow Lane and is playable")
+	await shot("c3_willow_lane")
+	m._open_pause(); m.menus.show_family(m.sim.state, hid); await wait(4)
+	await shot("c4_family_tree")
+	m.menus.visible = false; m.hud.visible = true
+	m._toggle_cheats(); await wait(3)
+	await shot("c5_cheat_console")
+	print("CREATOR: %d failures" % fails.size())
+	m.get_tree().quit(0 if fails.is_empty() else 1)
+
 func hood() -> void:
 	await wait(3)
 	m.menus.show_households(false); await wait(4)

@@ -40,6 +40,7 @@ const DEFAULTS := {
 	"quick_save": ["Save", ["F5"]],
 	"quick_load": ["Load", ["F9"]],
 	"menu": ["Menu / back", ["Escape"]],
+	"cheat_console": ["Cheat console (owner-approved access)", ["ctrl+shift+C"]],
 }
 
 static func make_event(spec: String) -> InputEvent:
