@@ -26,8 +26,7 @@ func _build(ch: Dictionary) -> void:
 	if model: model.queue_free()
 	var look: Dictionary = ch["look"]
 	_look_hash = hash(look)
-	var scene: PackedScene = load("res://assets/models/avatars/avatar_%s.glb" % look.get("body", "curvy"))
-	model = scene.instantiate()
+	model = AssetLoader.scene("res://assets/models/avatars/avatar_%s.glb" % look.get("body", "curvy"))
 	add_child(model)
 	var age := String(ch.get("age", "adult"))
 	model.scale = Vector3.ONE * {"child": 0.62, "teen": 0.9, "adult": 1.0, "elder": 0.98}.get(age, 1.0)

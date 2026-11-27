@@ -16,7 +16,7 @@ static var _cache := {}
 
 static func tex(name: String) -> Texture2D:
 	var p := "res://assets/textures/%s.png" % name
-	return load(p) if ResourceLoader.exists(p) else null
+	return AssetLoader.texture(p)
 
 static func _base(albedo: Color, rough: float, metal: float = 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
