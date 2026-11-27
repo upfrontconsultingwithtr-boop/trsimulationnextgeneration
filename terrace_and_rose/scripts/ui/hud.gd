@@ -28,37 +28,46 @@ var holding_label: Label
 var cat_btns := {}
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT); mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Container layout (scales with the window, never overflows): top row, middle row, bottom row.
+	var margin := MarginContainer.new(); margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right", "top", "bottom"]: margin.add_theme_constant_override("margin_" + side, 14)
+	add_child(margin)
+	var rows := VBoxContainer.new(); rows.mouse_filter = Control.MOUSE_FILTER_IGNORE; margin.add_child(rows)
+	var top_row := _row(rows); var mid_row := _row(rows, true); var bottom_row := _row(rows)
 	# top-left: clock and speed
-	var top := _panel(Control.PRESET_TOP_LEFT, Vector2(16, 16))
-	var tv := HBoxContainer.new(); tv.add_theme_constant_override("separation", 8); top.add_child(tv)
+	var tv := HBoxContainer.new(); tv.add_theme_constant_override("separation", 8); _panel(top_row).add_child(tv)
 	clock = UiTheme.title_label("Day 1 · 08:00", 24); clock.custom_minimum_size.x = 190; tv.add_child(clock)
 	for i in 3:
 		var b := Button.new(); b.toggle_mode = true; b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(func(): speed_pressed.emit(i)); tv.add_child(b); speed_btns.append(b)
-	# top-right: funds, mode, walls
-	var tr := _panel(Control.PRESET_TOP_RIGHT, Vector2(-16, 16))
-	var trv := HBoxContainer.new(); trv.add_theme_constant_override("separation", 12); tr.add_child(trv)
+	_spacer(top_row)
+	# top-right: funds, mode, walls, menu
+	var trv := HBoxContainer.new(); trv.add_theme_constant_override("separation", 12); _panel(top_row).add_child(trv)
 	funds = UiTheme.title_label("Funds 600.00", 24); trv.add_child(funds)
 	mode_label = Label.new(); trv.add_child(mode_label)
 	walls_btn = Button.new(); walls_btn.focus_mode = Control.FOCUS_NONE; walls_btn.pressed.connect(func(): walls_pressed.emit()); trv.add_child(walls_btn)
 	var mb := Button.new(); mb.text = "Menu (%s)" % InputConfig.label("menu"); mb.focus_mode = Control.FOCUS_NONE; mb.pressed.connect(func(): menu_pressed.emit()); trv.add_child(mb)
-	# left: needs
-	var np := _panel(Control.PRESET_CENTER_LEFT, Vector2(16, -40))
-	var nv := VBoxContainer.new(); nv.custom_minimum_size.x = 300; np.add_child(nv)
+	# middle-left: needs
+	var nv := VBoxContainer.new(); nv.custom_minimum_size.x = 290; var np := _panel(mid_row); np.size_flags_vertical = Control.SIZE_SHRINK_CENTER; np.add_child(nv)
 	nv.add_child(UiTheme.title_label("Needs", 20))
 	for k in GameState.NEED_KEYS:
 		var row := VBoxContainer.new(); nv.add_child(row)
 		var lab := Label.new(); row.add_child(lab)
-		var bar := ProgressBar.new(); bar.max_value = 100; bar.show_percentage = false; bar.custom_minimum_size = Vector2(280, 16); row.add_child(bar)
+		var bar := ProgressBar.new(); bar.max_value = 100; bar.show_percentage = false; bar.custom_minimum_size = Vector2(270, 14); row.add_child(bar)
 		need_rows[k] = [lab, bar]
 	holding_label = Label.new(); nv.add_child(holding_label)
-	# right: queue
-	var qp := _panel(Control.PRESET_CENTER_RIGHT, Vector2(-16, -60))
-	queue_box = VBoxContainer.new(); queue_box.custom_minimum_size = Vector2(320, 120); qp.add_child(queue_box)
-	# bottom: action bar
-	var bp := _panel(Control.PRESET_CENTER_BOTTOM, Vector2(0, -16))
-	var bv := VBoxContainer.new(); bp.add_child(bv)
+	_spacer(mid_row)
+	# middle-right: queue (top) and feedback log (bottom)
+	var right := VBoxContainer.new(); right.mouse_filter = Control.MOUSE_FILTER_IGNORE; right.add_theme_constant_override("separation", 10); mid_row.add_child(right)
+	queue_box = VBoxContainer.new(); queue_box.custom_minimum_size = Vector2(340, 0); _panel(right).add_child(queue_box)
+	var gap := Control.new(); gap.size_flags_vertical = Control.SIZE_EXPAND_FILL; gap.mouse_filter = Control.MOUSE_FILTER_IGNORE; right.add_child(gap)
+	log_box = VBoxContainer.new(); log_box.custom_minimum_size = Vector2(340, 0); _panel(right).add_child(log_box)
+	# bottom centre: action bar or furnish catalog
+	_spacer(bottom_row)
+	var bottom := VBoxContainer.new(); bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE; bottom_row.add_child(bottom)
+	_spacer(bottom_row)
+	var bp := _panel(bottom); var bv := VBoxContainer.new(); bp.add_child(bv)
 	focus_label = Label.new(); focus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; bv.add_child(focus_label)
 	action_bar = HBoxContainer.new(); action_bar.add_theme_constant_override("separation", 8); bv.add_child(action_bar)
 	for a in [["prepare_meal", "act_prepare"], ["eat", "act_eat"], ["greet", "act_greet"], ["sit", "act_sit"], ["sleep", "act_sleep"]]:
@@ -66,35 +75,36 @@ func _ready() -> void:
 		b.text = "%s  %s" % [InputConfig.label(a[1]), Simulation.ACTIONS[a[0]]["label"]]
 		var t: String = a[0]; b.pressed.connect(func(): action_pressed.emit(t)); action_bar.add_child(b)
 	var fb := Button.new(); fb.focus_mode = Control.FOCUS_NONE; fb.text = "%s  Furnish" % InputConfig.label("furnish_toggle"); fb.pressed.connect(func(): furnish_toggled.emit()); action_bar.add_child(fb)
-	# bottom-right: feedback log
-	var lp := _panel(Control.PRESET_BOTTOM_RIGHT, Vector2(-16, -16))
-	log_box = VBoxContainer.new(); log_box.custom_minimum_size = Vector2(420, 0); lp.add_child(log_box)
-	# furnish catalog (hidden by default)
-	furnish_panel = _panel(Control.PRESET_CENTER_BOTTOM, Vector2(0, -130))
+	furnish_panel = PanelContainer.new(); bv.add_child(furnish_panel)
+	furnish_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var fv := VBoxContainer.new(); furnish_panel.add_child(fv)
 	var fh := HBoxContainer.new(); fv.add_child(fh)
 	fh.add_child(UiTheme.title_label("Furnish", 20))
 	var u := Button.new(); u.text = "Undo (%s)" % InputConfig.label("undo"); u.focus_mode = Control.FOCUS_NONE; u.pressed.connect(func(): undo_pressed.emit()); fh.add_child(u)
 	var r := Button.new(); r.text = "Redo (%s)" % InputConfig.label("redo"); r.focus_mode = Control.FOCUS_NONE; r.pressed.connect(func(): redo_pressed.emit()); fh.add_child(r)
-	var grid := HBoxContainer.new(); grid.add_theme_constant_override("separation", 6); fv.add_child(grid)
+	var x := Button.new(); x.text = "Done (%s)" % InputConfig.label("furnish_toggle"); x.focus_mode = Control.FOCUS_NONE; x.pressed.connect(func(): furnish_toggled.emit()); fh.add_child(x)
+	var grid := GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 6); fv.add_child(grid)
 	for i in Catalog.ORDER.size():
 		var item: String = Catalog.ORDER[i]
-		var b := Button.new(); b.toggle_mode = true; b.focus_mode = Control.FOCUS_NONE
-		b.text = "%d  %s\n%s" % [i + 1, Catalog.get_def(item)["name"], Catalog.format_cents(Catalog.get_def(item)["price"])]
+		var b := Button.new(); b.toggle_mode = true; b.focus_mode = Control.FOCUS_NONE; b.custom_minimum_size.x = 190
+		b.text = "%d  %s — %s" % [i + 1, Catalog.get_def(item)["name"], Catalog.format_cents(Catalog.get_def(item)["price"])]
 		b.pressed.connect(func(): catalog_pressed.emit(item)); grid.add_child(b); cat_btns[item] = b
 	furnish_status = Label.new(); fv.add_child(furnish_status)
 	var help := Label.new(); help.add_theme_font_size_override("font_size", 14)
-	help.text = "Click or %s place · %s rotate · %s sell hovered · %s/%s/%s/%s nudge · %s exit" % [InputConfig.label("interact"), InputConfig.label("furnish_rotate"), InputConfig.label("furnish_sell"), InputConfig.label("furnish_nudge_up"), InputConfig.label("furnish_nudge_left"), InputConfig.label("furnish_nudge_down"), InputConfig.label("furnish_nudge_right"), InputConfig.label("furnish_toggle")]
+	help.text = "Click or %s place · %s rotate · %s sell hovered · %s/%s/%s/%s nudge" % [InputConfig.label("interact"), InputConfig.label("furnish_rotate"), InputConfig.label("furnish_sell"), InputConfig.label("furnish_nudge_up"), InputConfig.label("furnish_nudge_left"), InputConfig.label("furnish_nudge_down"), InputConfig.label("furnish_nudge_right")]
 	fv.add_child(help)
 	furnish_panel.visible = false
 
-func _panel(preset: int, offset: Vector2) -> PanelContainer:
-	var p := PanelContainer.new(); add_child(p)
-	p.set_anchors_and_offsets_preset(preset, Control.PRESET_MODE_MINSIZE)
-	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN if preset in [Control.PRESET_TOP_RIGHT, Control.PRESET_CENTER_RIGHT, Control.PRESET_BOTTOM_RIGHT] else (Control.GROW_DIRECTION_BOTH if preset == Control.PRESET_CENTER_BOTTOM else Control.GROW_DIRECTION_END)
-	p.grow_vertical = Control.GROW_DIRECTION_BEGIN if preset in [Control.PRESET_BOTTOM_RIGHT, Control.PRESET_CENTER_BOTTOM] else (Control.GROW_DIRECTION_BOTH if preset in [Control.PRESET_CENTER_LEFT, Control.PRESET_CENTER_RIGHT] else Control.GROW_DIRECTION_END)
-	p.position += offset
-	return p
+func _row(parent: Node, expand: bool = false) -> HBoxContainer:
+	var h := HBoxContainer.new(); h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if expand: h.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(h); return h
+
+func _spacer(parent: Node) -> void:
+	var c := Control.new(); c.size_flags_horizontal = Control.SIZE_EXPAND_FILL; c.mouse_filter = Control.MOUSE_FILTER_IGNORE; parent.add_child(c)
+
+func _panel(parent: Node) -> PanelContainer:
+	var p := PanelContainer.new(); parent.add_child(p); return p
 
 func refresh(sim: Simulation, furnishing_mode: bool, wall_mode: int, focus_text: String) -> void:
 	var me := sim.controlled()
@@ -146,6 +156,6 @@ func push_log(kind: String, text: String) -> void:
 	var prefix: String = {"done": "Done:", "error": "Can't:", "arrive": "Visitor:", "leave": "Visitor:", "info": "Note:", "save": "Saved:"}.get(kind, "Note:")
 	var col: Color = {"done": Palette.TEAL_DEEP, "error": Palette.TERRACOTTA, "arrive": Palette.BRASS, "leave": Palette.BRASS, "save": Palette.TEAL_DEEP}.get(kind, Palette.INK)
 	var l := Label.new(); l.text = "%s %s" % [prefix, text]; l.add_theme_color_override("font_color", col)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; l.custom_minimum_size.x = 400
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; l.custom_minimum_size.x = 330
 	log_box.add_child(l)
-	while log_box.get_child_count() > 5: log_box.get_child(0).free()
+	while log_box.get_child_count() > 4: log_box.get_child(0).free()

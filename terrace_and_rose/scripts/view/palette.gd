@@ -37,9 +37,11 @@ static func get_mat(name: String) -> Material:
 	if _cache.has(name): return _cache[name]
 	var m: StandardMaterial3D
 	match name:
-		"walnut": m = _textured(Color(1, 1, 1), 0.55, "walnut_albedo", "walnut_normal", 1.0, 0.4)
-		"walnut_floor": m = _textured(Color(1, 1, 1), 0.45, "walnut_albedo", "walnut_normal", 0.5, 0.5)
-		"stucco": m = _textured(Color(1, 1, 1), 0.92, "stucco_albedo", "stucco_normal", 0.5, 0.8)
+		"walnut": m = _textured(Color(1, 1, 1), 0.55, "walnut_albedo", "walnut_normal", 1.0, 0.15)
+		"walnut_floor": m = _textured(Color(1, 1, 1), 0.5, "walnut_albedo", "walnut_normal", 0.5, 0.12)
+		"stucco":
+			m = _textured(Color(1, 1, 1), 0.92, "stucco_albedo", "stucco_normal", 0.5, 0.25)
+			m.uv1_triplanar = true; m.uv1_world_triplanar = true
 		"teal_paint": m = _base(TEAL, 0.42)
 		"brass": m = _base(BRASS, 0.32, 0.9)
 		"linen": m = _textured(Color("efe8da"), 0.9, "fabric_detail", "fabric_normal", 3.0)

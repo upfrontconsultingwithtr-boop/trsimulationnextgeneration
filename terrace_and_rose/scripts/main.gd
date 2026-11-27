@@ -30,9 +30,9 @@ var smoke_runner: RefCounted   # keep a reference so the coroutine survives its 
 func _ready() -> void:
 	InputConfig.apply()
 	var args := OS.get_cmdline_user_args()
-	WorldView.low_graphics = args.has("--low") or args.has("--smoke")
+	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots")
 	var ui := CanvasLayer.new(); add_child(ui)
-	var root := Control.new(); root.theme = UiTheme.make(); root.set_anchors_preset(Control.PRESET_FULL_RECT); root.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(root)
+	var root := Control.new(); root.theme = UiTheme.make(); root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); root.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(root)
 	hud = Hud.new(); root.add_child(hud); hud.visible = false
 	menus = Menus.new(); root.add_child(menus)
 	popup = PopupMenu.new(); root.add_child(popup); popup.id_pressed.connect(_on_popup)
@@ -46,16 +46,18 @@ func _ready() -> void:
 	menus.has_save = saves.has_save(SLOT)
 	_show_title_scene("mara")
 	menus.show_title()
-	smoke = OS.get_cmdline_user_args().has("--smoke")
+	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots")
 	if smoke:
 		smoke_runner = SmokeTest.new(self)
-		smoke_runner.run()
+		if OS.get_cmdline_user_args().has("--shots"): smoke_runner.quick()
+		else: smoke_runner.run()
 
 func _audio() -> void:
 	ambient = AudioStreamPlayer.new(); add_child(ambient)
 	var st: AudioStreamWAV = AssetLoader.wav("res://assets/audio/ambient_coast.wav")
-	st.loop_mode = AudioStreamWAV.LOOP_FORWARD; st.loop_end = st.data.size() / 2
-	ambient.stream = st; ambient.volume_db = -10.0; ambient.play()
+	if st:
+		st.loop_mode = AudioStreamWAV.LOOP_FORWARD; st.loop_end = st.data.size() / 2
+		ambient.stream = st; ambient.volume_db = -10.0; ambient.play()
 	for n in ["ui_click", "ui_error", "chime_done", "knock", "coins", "sizzle"]:
 		var p := AudioStreamPlayer.new(); p.stream = AssetLoader.wav("res://assets/audio/%s.wav" % n); p.volume_db = -6.0; add_child(p); sfx[n] = p
 

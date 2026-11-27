@@ -30,3 +30,8 @@ lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality=3
 anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.93, 0.89, 0.82, 1)
+
+[filesystem]
+
+import/blender/enabled=false
+import/fbx2gltf/enabled=false

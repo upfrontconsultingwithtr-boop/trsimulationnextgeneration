@@ -97,7 +97,7 @@ func _floors() -> void:
 	for y in LotLayouts.SIZE:
 		for x in LotLayouts.SIZE:
 			var t := LotLayouts.tile(_lay, Vector2i(x, y))
-			if t == "D": by["."].append(Vector2i(x, y))
+			if t == "D" or t == "#" or t == "W": by["."].append(Vector2i(x, y))
 			elif by.has(t): by[t].append(Vector2i(x, y))
 			elif t == "G": by["="].append(Vector2i(x, y))
 	_mesh(_quad_mesh(by["."], 0.03), Palette.get_mat("walnut_floor"), Vector3.ZERO, false)
@@ -141,7 +141,9 @@ func _walls_and_openings() -> void:
 				else:
 					_glb(mod, "res://assets/models/building/door_frame.glb")
 					var leaf := _glb(mod, "res://assets/models/building/door_leaf.glb")
-					leaf.position.x = -0.44; leaf.rotation.y = -1.25 if LotLayouts.tile(_lay, c + (Vector2i(0, 1) if horiz else Vector2i(1, 0))) != "." else 1.25
+					# hinge on the left jamb; open 90 degrees toward the indoor side
+					var inside_plus := LotLayouts.tile(_lay, c + (Vector2i(0, 1) if horiz else Vector2i(1, 0))) == "."
+					leaf.position.x = -0.44; leaf.rotation.y = -PI / 2 if inside_plus else PI / 2
 			walls.append({"node": node, "pos": node.position})
 
 func _child_mesh(parent: Node3D, m: Mesh, mat: Material, pos: Vector3) -> MeshInstance3D:

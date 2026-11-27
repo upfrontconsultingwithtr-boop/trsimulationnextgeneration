@@ -430,7 +430,7 @@ def build_actions(rig, b):
     act('cook', 32, [(0, cook(0)), (8, cook(1)), (16, cook(-1)), (24, cook(1)), (32, cook(0))])
     wave_ = lambda k: P(base, {'upper_arm.R': {'r': (0, -0.2, -2.5)}, 'forearm.R': {'r': (0, 0, -0.4 + 0.5 * k)}, 'brow.L': {'l': (0, 0, 0.004)}, 'brow.R': {'l': (0, 0, 0.004)}, 'head': {'r': (-0.08, 0, 0.08)}, 'jaw': {'r': (0.06, 0, 0)}})
     act('wave', 36, [(0, base), (8, wave_(1)), (14, wave_(-1)), (20, wave_(1)), (26, wave_(-1)), (36, base)], False)
-    lie = P({'hips': {'r': (math.pi / 2, 0, 0), 'l': (0, -(0.53 * h - 0.62), 0)}, 'upper_arm.L': {'r': (0, 0, 0.15)}, 'upper_arm.R': {'r': (0, 0, -0.15)}, 'thigh.L': {'r': (0, 0, 0.03)}, 'thigh.R': {'r': (0, 0, -0.03)}}, closed)
+    lie = P({'hips': {'r': (-math.pi / 2, 0, 0), 'l': (0, -(0.53 * h - 0.62), 0)}, 'upper_arm.L': {'r': (0, 0, 0.15)}, 'upper_arm.R': {'r': (0, 0, -0.15)}, 'thigh.L': {'r': (0, 0, 0.03)}, 'thigh.R': {'r': (0, 0, -0.03)}}, closed)
     act('sleep', 48, [(0, lie), (24, P(lie, {'chest': {'r': (-0.03, 0, 0)}})), (48, lie)])
     rig.animation_data.action = bpy.data.actions['idle']
 

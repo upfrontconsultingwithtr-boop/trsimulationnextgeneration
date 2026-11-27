@@ -15,18 +15,20 @@ var _rebind_btns := {}
 var has_save := false
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _clear() -> void:
 	for c in get_children(): c.queue_free()
 
 func _card(width: int = 520, anchor: int = Control.PRESET_CENTER_LEFT) -> VBoxContainer:
-	var p := PanelContainer.new(); add_child(p)
-	p.set_anchors_and_offsets_preset(anchor, Control.PRESET_MODE_MINSIZE)
-	p.grow_vertical = Control.GROW_DIRECTION_BOTH
-	p.position.x += 48 if anchor == Control.PRESET_CENTER_LEFT else 0
-	if anchor == Control.PRESET_CENTER: p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	# full-screen margin -> vertically centred column -> panel (never overflows the screen)
+	var m := MarginContainer.new(); add_child(m); m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right", "top", "bottom"]: m.add_theme_constant_override("margin_" + side, 36)
+	var col := VBoxContainer.new(); col.alignment = BoxContainer.ALIGNMENT_CENTER; col.mouse_filter = Control.MOUSE_FILTER_IGNORE; m.add_child(col)
+	var p := PanelContainer.new(); col.add_child(p)
+	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if anchor == Control.PRESET_CENTER else Control.SIZE_SHRINK_BEGIN
 	var v := VBoxContainer.new(); v.custom_minimum_size.x = width; v.add_theme_constant_override("separation", 12); p.add_child(v)
 	return v
 

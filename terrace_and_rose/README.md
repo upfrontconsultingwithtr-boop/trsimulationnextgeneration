@@ -17,16 +17,26 @@ godot --headless --path . --import                  # first time only: builds th
 godot --headless --path . -s tests/lint.gd          # every script parses and type-checks
 godot --headless --path . -s tests/run_tests.gd     # Milestone-1 regression suite (69 checks)
 godot --headless --path . -s tests/genetics_tests.gd   # Part 2 genetics (child DNA) checks
-# graphical smoke test: plays the day and writes screenshots to build/smoke/
+# graphical smoke test: plays the whole day (11 checks) and writes 12 screenshots to build/smoke/
 godot --path . -- --smoke
+godot --path . -- --shots          # quick visual check: 3 screenshots (HUD, sleep, furnish)
 # on a machine without a GPU (Linux CI):
-xvfb-run -a godot --path . --rendering-method gl_compatibility -- --smoke
+xvfb-run -a godot --path . --rendering-driver opengl3 --rendering-method gl_compatibility -- --smoke
 ```
 Each command exits with code 0 on success.
 
-Note: models, textures and audio load at runtime through `AssetLoader` (Godot's built-in glTF, Image and WAV loaders),
-so the game does not depend on the editor's import step. On some headless Linux machines, `--import` registers
-the script classes and then idles instead of quitting. If that happens, stop it after about 20 seconds; the class cache is already built.
+Note: `AssetLoader` uses Godot's imported resources when they exist, as in the editor and in exported builds. Otherwise it loads the
+raw GLB/PNG/WAV directly, so a fresh checkout runs even before the first import. The editable `.blend` sources are
+excluded from Godot's importer (`assets/source/.gdignore`). Otherwise Godot tries to launch Blender to import them, which can hang.
+
+## Desktop builds
+Export templates for 4.5.1 are free from the Godot download page (Editor → Manage Export Templates).
+```bash
+godot --headless --path . --export-release "Linux Desktop" export/linux/TerraceAndRose.x86_64
+godot --headless --path . --export-release "Windows Desktop" export/windows/TerraceAndRose.exe
+```
+Builds go to `export/`, which is git-ignored because the binaries are 80–110 MB. Add `-- --low` at launch for low-end PCs:
+it uses one cheap sun shadow and skips the per-lamp lighting passes.
 
 ## Rebuild the art and audio (optional)
 `blender -b --python-exit-code 1 -P tools/blender/build_assets.py` regenerates every GLB, texture, WAV and `.blend` source.

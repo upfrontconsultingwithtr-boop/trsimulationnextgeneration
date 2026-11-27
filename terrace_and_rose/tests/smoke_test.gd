@@ -32,6 +32,22 @@ func until(cond: Callable, max_minutes: int) -> void:
 		m.sim.tick()
 		if i % 40 == 0: await wait(1)
 
+func quick() -> void:
+	await wait(3)
+	m.start_new("jin"); await wait(8)
+	await shot("q1_hud")
+	var me: Dictionary = m.sim.controlled()
+	m.sim.queue_action("c1", "sleep")
+	await until(func(): return me["pose"] == "lie", 300)
+	m.sim.advance_minutes(20)
+	m.rig.focus(Vector3(4, 0, 3.5), 7.0); await wait(12)
+	await shot("q2_sleep")
+	m.sim.cancel_action("c1"); await wait(4)
+	m._toggle_furnish(); m._select_item("lamp"); m.ghost_from_mouse = false; m.ghost_cell = Vector2i(24, 15)
+	m.rig.focus(Vector3(10, 0, 8), 15.0); await wait(8)
+	await shot("q3_furnish")
+	m.get_tree().quit(0)
+
 func run() -> void:
 	print("SMOKE start")
 	for i in 6:
@@ -40,10 +56,13 @@ func run() -> void:
 	await shot("01_title")
 	m.menus.show_presets(); m._show_title_scene("jin"); await wait(20)
 	await shot("02_presets")
-	m.start_new("mara"); await wait(30)
+	m.start_new("mara")
+	check(m.sim.funds() == 60000 and m.sim.minute() == 480, "starts 600.00 at 08:00")
+	check(m.world.furn_nodes.size() == m.sim.furniture("lot1").size() and m.world.furn_nodes.size() > 10, "all furniture has scene nodes")
+	await wait(30)
+	check(m.world.avatars.has("c1") and m.world.avatars["c1"].anim != null, "player avatar built with animations")
 	await shot("03_bungalow_morning")
 	var me: Dictionary = m.sim.controlled()
-	check(m.sim.funds() == 60000 and m.sim.minute() == 480, "starts 600.00 at 08:00")
 	m._hotkey_action("prepare_meal")
 	await until(func(): return me["current"].get("phase", "") == "perform", 60)
 	for i in 30: m.sim.tick()
@@ -85,8 +104,13 @@ func run() -> void:
 	m._toggle_furnish()
 	# save / reload
 	var snap := JSON.stringify(m.sim.state, "", true)
-	m.save_game(); m.sim.advance_minutes(30); m.load_game(); await wait(10)
-	check(JSON.stringify(m.sim.state, "", true) == snap, "reload restores exact state")
+	m.save_game(); m.sim.advance_minutes(30); m.load_game()   # compare before any frame can tick the clock
+	var now := JSON.stringify(m.sim.state, "", true)
+	check(now == snap, "reload restores exact state")
+	if now != snap:
+		var i := 0
+		while i < mini(now.length(), snap.length()) and now[i] == snap[i]: i += 1
+		print("    first difference near: …%s… vs …%s…" % [snap.substr(maxi(0, i - 80), 140), now.substr(maxi(0, i - 80), 140)])
 	# cutaway modes + night + sleep
 	m.world.wall_mode = 0; m.rig.focus(m.world.house_center, 22.0); await wait(30); await shot("10_walls_up_roof")
 	m.world.wall_mode = 1
