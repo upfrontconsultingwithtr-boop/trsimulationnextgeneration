@@ -33,6 +33,16 @@ The first online test runs locally (two clients plus a local Godot or Node serve
 ### Missions
 - **Data-driven missions** (`data/missions/*.json`): steps, conditions, choices, rewards and failure states. They are authored with a small in-project mission editor, the same pattern as the lot editor.
 - **Career chains:** each career has 3–5 missions per level. Examples are Baker (wedding catering), Florist (dressing the Park inn), Innkeeper (critic's visit), Detective (Case Files) and Journalist (scoop on a town secret).
+- **Gangster career (crime path):** you climb from Lookout to Runner, Enforcer, Lieutenant and finally Boss of your own crew.
+  - **Missions:** heists, smuggling at the Brineglass docks, protection rackets on town businesses, and turf disputes with a rival crew.
+  - **Systems:**
+    - **Heat** draws the Detective's attention: raids, interrogations, possible arrest or jail time.
+    - **Reputation** affects fear versus respect.
+    - **Dirty money** must be laundered through a business, such as the bakery or the florist.
+    - **Loyalty** decides whether crew members stay or betray you.
+  - **Links to other systems:** a Detective household can investigate a Gangster household's cases, so players can be on either side of the same crime.
+  - **Choices:** go straight, turn informant, or take over the town.
+  - Crimes are stylized like a crime drama, not real-world instructions, and violence stays off-screen.
 - **Vacation missions:** each destination has 2–3 missions. At Brineglass Harbor these are the lighthouse keeper's lost logbook, a shipwreck beachcombing hunt, and the market tasting rivalry.
 - **Outcomes** feed into money, skills, relationships, household memories and the photo album.
 
