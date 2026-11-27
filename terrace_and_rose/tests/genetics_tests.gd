@@ -24,6 +24,10 @@ func _init() -> void:
 	check(bodies.has("curvy") and bodies.has("slender"), "body frame from either parent")
 	var t := Genetics.make_child(a, b, 7)
 	check(t["genes"]["parents"] == ["p1", "p2"], "child records both parents")
+	var k3 := Genetics.make_child(a, b, 3)
+	var af: float = k3["look"]["morphs"].get("african", 0.0); var asn: float = k3["look"]["morphs"].get("asian", 0.0)
+	check(af > 0.1 and asn > 0.1, "child's face blends both parents' ancestry morphs (african %.2f, asian %.2f)" % [af, asn])
+	check(k3["look"]["frame"] in ["f", "m"], "child inherits a body frame")
 	var twins := 0
 	for s in 1000: if Genetics.litter_size(s) >= 2: twins += 1
 	check(twins > 40 and twins < 160, "twins happen occasionally (%d/1000)" % twins)

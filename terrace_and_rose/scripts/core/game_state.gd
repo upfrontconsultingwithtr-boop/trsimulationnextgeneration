@@ -13,15 +13,15 @@ const START_MINUTE := 8 * 60
 const PRESETS := {
 	"mara": {"name": "Mara", "pronouns": "she/her", "age": "adult",
 		"blurb": "Warm, unhurried, and always cooking for one more. Natural coils, gold earrings, terracotta jumpsuit.",
-		"look": {"body": "curvy", "hair": "coils", "outfit": "jumpsuit", "accessories": ["earrings"],
+		"look": {"frame": "f", "morphs": {"african": 0.9, "heavy": 0.6, "bust": 0.6, "older": 0.45}, "body": "curvy", "hair": "coils", "outfit": "jumpsuit", "accessories": ["earrings"],
 			"skin": "8a5537", "hair_color": "1d1611", "top": "c2643f", "bottom": "c2643f", "outer": "c2643f", "knit": "c2643f", "shoe": "5b3b27"}},
 	"jin": {"name": "Jin", "pronouns": "he/him", "age": "adult",
 		"blurb": "Quiet designer with a dry sense of humour. Wavy dark hair, sea-glass jacket, relaxed trousers.",
-		"look": {"body": "slender", "hair": "wavy", "outfit": "jacket", "accessories": [],
+		"look": {"frame": "m", "morphs": {"asian": 0.9, "slim": 0.45}, "body": "slender", "hair": "wavy", "outfit": "jacket", "accessories": [],
 			"skin": "e2bb93", "hair_color": "17120f", "top": "86bdb2", "bottom": "c9bba0", "outer": "86bdb2", "knit": "86bdb2", "shoe": "3a3532"}},
 	"ellis": {"name": "Ellis", "pronouns": "he/him", "age": "elder",
 		"blurb": "Retired boat-builder who knows everyone's story. Silver curls, short beard, cream knit, brown jacket.",
-		"look": {"body": "classic", "hair": "curls_short", "outfit": "knit_jacket", "accessories": ["beard"],
+		"look": {"frame": "m", "morphs": {"african": 0.9, "older": 0.35, "slim": 0.15}, "body": "classic", "hair": "curls_short", "outfit": "knit_jacket", "accessories": ["beard"],
 			"skin": "4b2d1e", "hair_color": "cfcac2", "top": "ede4d1", "bottom": "4d4842", "outer": "6e4b31", "knit": "ede4d1", "shoe": "2f2520"}},
 }
 const PRESET_ORDER := ["mara", "jin", "ellis"]

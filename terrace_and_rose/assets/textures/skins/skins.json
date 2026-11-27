@@ -1,0 +1,86 @@
+{
+ "young_african_female": {
+  "tone": "6b3e2b",
+  "source": "young_darkskinned_female_diffuse.png"
+ },
+ "young_african_male": {
+  "tone": "583726",
+  "source": "young_darkskinned_male_diffuse.png"
+ },
+ "young_asian_female": {
+  "tone": "ddb08f",
+  "source": "young_lightskinned_female_diffuse3.png"
+ },
+ "young_asian_male": {
+  "tone": "d2ac91",
+  "source": "young_lightskinned_male_diffuse3.png"
+ },
+ "young_caucasian_female": {
+  "tone": "d7ae93",
+  "source": "young_lightskinned_female_diffuse.png"
+ },
+ "young_caucasian_male": {
+  "tone": "e3b190",
+  "source": "young_lightskinned_male_diffuse.png"
+ },
+ "middleage_african_female": {
+  "tone": "6a3f2d",
+  "source": "middleage_darkskinned_female_diffuse.png"
+ },
+ "middleage_african_male": {
+  "tone": "65402c",
+  "source": "middleage_darkskinned_male_diffuse.png"
+ },
+ "middleage_asian_female": {
+  "tone": "dfb89b",
+  "source": "middleage_lightskinned_female_diffuse2.png"
+ },
+ "middleage_asian_male": {
+  "tone": "dcb494",
+  "source": "middleage_lightskinned_male_diffuse2.png"
+ },
+ "middleage_caucasian_female": {
+  "tone": "d7b196",
+  "source": "middleage_lightskinned_female_diffuse.png"
+ },
+ "middleage_caucasian_male": {
+  "tone": "d6b295",
+  "source": "middleage_lightskinned_male_diffuse.png"
+ },
+ "old_african_female": {
+  "tone": "68301d",
+  "source": "old_darkskinned_female_diffuse.png"
+ },
+ "old_african_male": {
+  "tone": "704027",
+  "source": "old_darkskinned_male_diffuse.png"
+ },
+ "old_asian_female": {
+  "tone": "d4a37f",
+  "source": "old_lightskinned_female_diffuse2.png"
+ },
+ "old_asian_male": {
+  "tone": "ca9169",
+  "source": "old_lightskinned_male_diffuse2.png"
+ },
+ "old_caucasian_female": {
+  "tone": "ddbaa2",
+  "source": "old_lightskinned_female_diffuse.png"
+ },
+ "old_caucasian_male": {
+  "tone": "ecbf9c",
+  "source": "old_lightskinned_male_diffuse.png"
+ },
+ "cutoff3d_indian_female_skin": {
+  "tone": "bd8a6d",
+  "source": "indian_skin2e.png"
+ },
+ "onlytheghosts_young_eurasian_female": {
+  "tone": "ddb08f",
+  "source": "young_eurasian_female_diffuse.png"
+ },
+ "callharvey3d_midtoned_female": {
+  "tone": "a3765b",
+  "source": "harvey_midtoned_female_diffuse.png"
+ }
+}

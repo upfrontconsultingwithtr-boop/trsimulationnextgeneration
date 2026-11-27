@@ -2,3 +2,8 @@
 *.blend1
 export/
 build/
+assets/models/humans/*.png
+assets/models/humans/*.jpg
+assets/models/humans/*.png.import
+assets/models/humans/*.jpg.import
+assets/source/human_*.blend

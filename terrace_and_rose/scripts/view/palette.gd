@@ -40,7 +40,7 @@ static func get_mat(name: String) -> Material:
 		"walnut": m = _textured(Color(1, 1, 1), 0.55, "walnut_albedo", "walnut_normal", 1.0, 0.15)
 		"walnut_floor": m = _textured(Color(1, 1, 1), 0.5, "walnut_albedo", "walnut_normal", 0.5, 0.12)
 		"stucco":
-			m = _textured(Color(1, 1, 1), 0.92, "stucco_albedo", "stucco_normal", 0.5, 0.25)
+			m = _textured(Color(1, 1, 1), 0.92, "stucco_albedo", "stucco_normal", 1.4, 0.12)
 			m.uv1_triplanar = true; m.uv1_world_triplanar = true
 		"teal_paint": m = _base(TEAL, 0.42)
 		"brass": m = _base(BRASS, 0.32, 0.9)

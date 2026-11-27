@@ -10,9 +10,9 @@ signal cancelled
 const SKINS := ["f3d6bf", "e8c3a0", "d9a77c", "c08a5e", "a8704a", "8a5537", "6b3e26", "4b2d1e"]
 const HAIR_COLS := ["17120f", "2a1d16", "5a3a22", "8a4b2a", "c89a5a", "e6d3a3", "cfcac2", "d77a8f"]
 const CLOTH_COLS := ["c2643f", "86bdb2", "4f8f86", "e3b04b", "ede4d1", "6e4b31", "3a3532", "d77a8f"]
-const HAIRS := ["coils", "wavy", "curls_short", "bun", "long"]
+const HAIRS := ["coils", "wavy", "curls_short", "bun", "long", "braid", "bob"]
 const BODIES := ["curvy", "slender", "classic"]
-const OUTFITS := ["casual", "jumpsuit", "jacket", "knit_jacket", "apron", "dress"]
+const OUTFITS := ["casual", "jumpsuit", "shirt", "knit_jacket", "overalls", "dress"]
 const PRONOUNS := ["she/her", "he/him", "they/them"]
 
 var s: Dictionary
@@ -154,7 +154,17 @@ func _build_person_panel() -> void:
 	custom.text_submitted.connect(func(t): if t.strip_edges() != "": c["pronouns"] = t.strip_edges(); _rebuild())
 	pr.add_child(custom)
 	_lbl(_right, "Life stage"); _opt(_right, FamilyLife.AGES, c["age"], func(v): c["age"] = v; _rebuild())
-	_lbl(_right, "Body"); _opt(_right, BODIES, L["body"], func(v): L["body"] = v; _changed())
+	_lbl(_right, "Body frame (independent of pronouns)")
+	_opt(_right, ["f", "m"], HumanStyle.frame_of(L, c["pronouns"]), func(v): L["frame"] = v; _changed())
+	if not L.has("morphs"): L["morphs"] = Genetics.morphs_of(L).duplicate()
+	var mg := GridContainer.new(); mg.columns = 2; _right.add_child(mg)
+	for k in ["african", "asian", "caucasian", "heavy", "slim", "muscular", "bust", "older"]:
+		var lab := Label.new(); lab.text = {"african": "Ancestry: African", "asian": "Ancestry: Asian", "caucasian": "Ancestry: European", "heavy": "Fuller body", "slim": "Slimmer body", "muscular": "Muscle", "bust": "Bust", "older": "Mature face"}[k]
+		lab.add_theme_font_size_override("font_size", 14); mg.add_child(lab)
+		var sl := HSlider.new(); sl.min_value = 0; sl.max_value = 1; sl.step = 0.05; sl.custom_minimum_size.x = 200
+		sl.value = float(L["morphs"].get(k, 0.0)); var key: String = k
+		sl.drag_ended.connect(func(_c): L["morphs"][key] = sl.value; _changed())
+		mg.add_child(sl)
 	_lbl(_right, "Skin tone"); _swatches(_right, SKINS, func(v): L["skin"] = v; _changed())
 	_lbl(_right, "Hair texture & style"); _opt(_right, HAIRS, L["hair"], func(v): L["hair"] = v; L["hair_gene"] = v; _changed())
 	_lbl(_right, "Hair colour"); _swatches(_right, HAIR_COLS, func(v): L["hair_color"] = v; _changed())

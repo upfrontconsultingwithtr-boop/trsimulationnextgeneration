@@ -16,6 +16,20 @@ static func natural_hair(look: Dictionary) -> String:
 	return String(look.get("hair_natural", look.get("hair_color", "1d1611")))
 
 ## Returns {look, traits, genes}. a/b are character dicts (need "look" and optional "traits").
+const MORPH_KEYS := ["african", "asian", "caucasian", "heavy", "slim", "muscular", "older", "bust"]
+
+## Face/body morph weights of a look (explicit, or derived from skin tone and frame for older looks).
+static func morphs_of(look: Dictionary) -> Dictionary:
+	if look.has("morphs"): return look["morphs"]
+	var tone := Color(String(look.get("skin", "b57b54")))
+	var dark := clampf(1.0 - tone.get_luminance() * 1.6, 0.0, 1.0)
+	var m := {"african": dark * 0.85, "caucasian": (1.0 - dark) * 0.45, "asian": (1.0 - dark) * 0.2}
+	match String(look.get("body", "")):
+		"curvy": m["heavy"] = 0.55; m["bust"] = 0.5
+		"slender": m["slim"] = 0.5
+		"classic": m["muscular"] = 0.2
+	return m
+
 static func make_child(a: Dictionary, b: Dictionary, seed: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new(); rng.seed = seed
 	var la: Dictionary = a["look"]; var lb: Dictionary = b["look"]
@@ -37,7 +51,15 @@ static func make_child(a: Dictionary, b: Dictionary, seed: int) -> Dictionary:
 	var height := clampf((float(la.get("height", 1.0)) + float(lb.get("height", 1.0))) * 0.5 + rng.randf_range(-0.04, 0.04), 0.9, 1.1)
 	var eyes := String(la.get("eyes", "2b1a10")) if rng.randf() < 0.5 else String(lb.get("eyes", "2b1a10"))
 	var top: String = CHILD_OUTFIT_COLORS[rng.randi() % CHILD_OUTFIT_COLORS.size()]
-	var look := {"body": body, "hair": "curls_short" if hair_gene == "curls_short" else hair_gene, "hair_gene": hair_gene, "outfit": "casual", "accessories": [],
+	# face and body shape: each morph is a random-weighted blend of the parents plus a little variation
+	var ma := morphs_of(la); var mb := morphs_of(lb); var morphs := {}
+	for k in MORPH_KEYS:
+		if k == "older" or k == "bust": continue
+		var w := rng.randf_range(0.3, 0.7)
+		var v := float(ma.get(k, 0.0)) * w + float(mb.get(k, 0.0)) * (1.0 - w) + rng.randf_range(-0.06, 0.06)
+		if v > 0.02: morphs[k] = snappedf(clampf(v, 0.0, 1.0), 0.01)
+	var frame := String(la.get("frame", "f")) if rng.randf() < 0.5 else String(lb.get("frame", "m"))
+	var look := {"frame": frame, "morphs": morphs, "body": body, "hair": "curls_short" if hair_gene == "curls_short" else hair_gene, "hair_gene": hair_gene, "outfit": "casual", "accessories": [],
 		"skin": skin.to_html(false), "hair_color": hair.to_html(false), "hair_natural": hair.to_html(false), "eyes": eyes, "height": snappedf(height, 0.01),
 		"top": top, "bottom": "4d4842", "outer": top, "knit": top, "shoe": "3a3532"}
 	# personality: one trait from each parent when possible, plus a chance of something new

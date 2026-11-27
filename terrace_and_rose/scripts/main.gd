@@ -38,7 +38,7 @@ var smoke_runner: RefCounted   # keep a reference so the coroutine survives its 
 func _ready() -> void:
 	InputConfig.apply()
 	var args := OS.get_cmdline_user_args()
-	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots") or args.has("--hood") or args.has("--creator") or args.has("--shop")
+	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots") or args.has("--hood") or args.has("--creator") or args.has("--shop") or args.has("--people")
 	var ui := CanvasLayer.new(); add_child(ui)
 	var root := Control.new(); root.theme = UiTheme.make(); root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); root.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(root)
 	hud = Hud.new(); root.add_child(hud); hud.visible = false
@@ -61,10 +61,11 @@ func _ready() -> void:
 	menus.has_hood_save = saves.has_save(HOOD_SLOT)
 	_show_title_scene("mara")
 	menus.show_title()
-	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--hood") or OS.get_cmdline_user_args().has("--creator") or OS.get_cmdline_user_args().has("--shop")
+	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--hood") or OS.get_cmdline_user_args().has("--creator") or OS.get_cmdline_user_args().has("--shop") or OS.get_cmdline_user_args().has("--people")
 	if smoke:
 		smoke_runner = SmokeTest.new(self)
-		if OS.get_cmdline_user_args().has("--shop"): smoke_runner.shop()
+		if OS.get_cmdline_user_args().has("--people"): smoke_runner.people()
+		elif OS.get_cmdline_user_args().has("--shop"): smoke_runner.shop()
 		elif OS.get_cmdline_user_args().has("--creator"): smoke_runner.creator_flow()
 		elif OS.get_cmdline_user_args().has("--hood"): smoke_runner.hood()
 		elif OS.get_cmdline_user_args().has("--shots"): smoke_runner.quick()

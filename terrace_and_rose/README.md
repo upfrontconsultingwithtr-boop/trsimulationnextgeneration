@@ -108,9 +108,20 @@ Left-click the floor to walk there. Left-click an object or person for a menu (t
 
 Saves live in `user://saves/household1.json` (plus `.bak.json`). On Linux that is `~/.local/share/godot/app_userdata/Terrace & Rose/`.
 
+## Realistic characters
+Characters use realistic MakeHuman-based bodies (CC0). These include real skin textures across ancestries and ages, eyes, brows and lashes, strand hair, and fitted clothing on one shared game skeleton.
+- **Face and body:** morphs (ancestry blend, fuller, slimmer, muscle, bust, mature face) are editable in the creator and blend in children's DNA.
+- **Skin tone:** picks the closest of 21 real skin textures, then fine-tints it.
+- **Clothes:** recoloured per character with the project's fabrics. Skin under the worn outfit is hidden, so nothing pokes through.
+- **Fallback:** the original stylised avatars remain available (`AvatarView.stylized = true`).
+See `tools/blender/README_humans.md` to rebuild them.
+
 ## Art status (needs an art pass)
 The avatars, furniture and modules are **original procedural placeholders**. They are game-ready and consistent, but not final art:
-- **Avatars:** bodies made with Blender's skin modifier and distance-based skin weights. Faces are simple primitives with a blink, brow raise and jaw. Hair is built from primitive clusters. An artist should sculpt and retopologize the heads, hair cards and clothing in the existing `.blend` files and keep the rig's bone names.
+- **Realistic avatars (MakeHuman):** these replaced the stylised placeholders. Still to do:
+  - Facial expressions and blinking are not yet on the new skeleton.
+  - Mara's gold earrings and Ellis's beard need CC0 or custom meshes.
+  - There's no Mature/young skin-detail pass yet.
 - **Animations** are hand-keyed in code: idle, walk, sit_down, sit_idle, stand_up, eat, sit_eat, cook, wave and sleep. They need motion polish.
 - **Building:** door leaves are posed open (no swing animation yet). The roof is a simple hip roof.
 - **Audio** is synthesised; a sound designer pass is recommended.

@@ -48,6 +48,28 @@ func quick() -> void:
 	await shot("q3_furnish")
 	m.get_tree().quit(0)
 
+func people() -> void:
+	await wait(3)
+	m.menus.visible = false
+	m._show_title_scene("mara"); await wait(10)
+	m.rig.focus(Vector3(8.2, 0.9, 11.4), 6.0); m.rig.pitch = deg_to_rad(-6); m.rig.yaw = deg_to_rad(8); m.rig._apply(); await wait(6)
+	await shot("p1_presets")
+	for who in ["mara", "jin", "ellis"]:
+		var a: Node3D = m.world.avatars["c1" if who == "mara" else "c_" + who]
+		m.world.wall_mode = 2
+		m.rig.focus(a.position + Vector3(0, 0.95, 0), 1.1); m.rig.pitch = deg_to_rad(-3); m.rig.yaw = deg_to_rad(12); m.rig._apply(); await wait(8)
+		await shot("p2_face_" + who)
+	m.start_neighborhood("bell"); await wait(4)
+	m.sim.state["story"]["pending"].clear(); m.story_open = false; m.hud.hide_story(); m.hud.visible = false
+	var i := 0
+	for cid in m.sim.state["households"]["bell"]["members"]:
+		m.sim.state["characters"][cid]["cell"] = [12 + i * 3, 23]; m.sim.state["characters"][cid]["facing"] = 0; i += 1
+		m.sim.state["characters"][cid]["ai"] = "player"
+	m.sim.set_speed(0); await wait(30)
+	m.rig.focus(Vector3(8.6, 0.9, 11.6), 7.5); m.rig.pitch = deg_to_rad(-8); m.rig.yaw = 0.0; m.rig._apply(); await wait(6)
+	await shot("p3_bell_family")
+	m.get_tree().quit(0)
+
 func shop() -> void:
 	await wait(3)
 	m.start_neighborhood("rowan"); await wait(3)

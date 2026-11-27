@@ -12,6 +12,7 @@ var _queued_anim := ""
 var _look_hash := 0
 var pick: StaticBody3D
 var holding_mesh: MeshInstance3D
+static var stylized := false   # force the original stylised avatars (setting / fallback)
 
 static func cell_to_world(c: Vector2) -> Vector3:
 	return Vector3(c.x * Catalog.CELL, 0.0, c.y * Catalog.CELL)
@@ -26,17 +27,23 @@ func _build(ch: Dictionary) -> void:
 	if model: model.queue_free()
 	var look: Dictionary = ch["look"]
 	_look_hash = hash(look)
-	model = AssetLoader.scene("res://assets/models/avatars/avatar_%s.glb" % look.get("body", "curvy"))
-	add_child(model)
 	var age := String(ch.get("age", "adult"))
-	model.scale = Vector3.ONE * {"child": 0.62, "teen": 0.9, "adult": 1.0, "elder": 0.98}.get(age, 1.0)
-	var accs: Array = look.get("accessories", [])
-	for mi in model.find_children("*", "MeshInstance3D", true, false):
-		var n := String(mi.name)
-		if n.begins_with("hair_"): mi.visible = n == "hair_" + String(look.get("hair", "coils"))
-		elif n.begins_with("outfit_"): mi.visible = n.begins_with("outfit_%s__" % look.get("outfit", "casual"))
-		elif n.begins_with("acc_"): mi.visible = accs.has(n.substr(4))
-	Palette.apply(model, look)
+	if HumanStyle.available() and not stylized:
+		# realistic MakeHuman-based body for this frame + life stage
+		model = AssetLoader.scene(HumanStyle.body_file(look, age, String(ch.get("pronouns", ""))))
+		add_child(model)
+		HumanStyle.apply(model, look, age, String(ch.get("pronouns", "")))
+	else:
+		model = AssetLoader.scene("res://assets/models/avatars/avatar_%s.glb" % look.get("body", "curvy"))
+		add_child(model)
+		model.scale = Vector3.ONE * {"child": 0.62, "teen": 0.9, "adult": 1.0, "elder": 0.98}.get(age, 1.0)
+		var accs: Array = look.get("accessories", [])
+		for mi in model.find_children("*", "MeshInstance3D", true, false):
+			var n := String(mi.name)
+			if n.begins_with("hair_"): mi.visible = n == "hair_" + String(look.get("hair", "coils"))
+			elif n.begins_with("outfit_"): mi.visible = n.begins_with("outfit_%s__" % look.get("outfit", "casual"))
+			elif n.begins_with("acc_"): mi.visible = accs.has(n.substr(4))
+		Palette.apply(model, look)
 	anim = model.find_child("AnimationPlayer", true, false)
 	if anim:
 		for a in LOOPS:
