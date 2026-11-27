@@ -1,0 +1,25 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="Terrace & Rose"
+config/description="An original 3D life simulation. Milestone 1: A Day at Alder Bungalow."
+config/version="0.1.0"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.5", "Forward Plus")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+lights_and_shadows/positional_shadow/soft_shadow_filter_quality=3
+environment/defaults/default_clear_color=Color(0.93, 0.89, 0.82, 1)
