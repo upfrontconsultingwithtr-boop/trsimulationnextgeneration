@@ -54,3 +54,21 @@ The first online test runs locally (two clients plus a local Godot or Node serve
   - All names, places and characters are new. No real victims, families or suspects are named, and no recent real crimes are used.
   - Violence happens off-screen; the focus is on deduction.
 - **Planned first cases (working titles, all original):** *The Lantern Walk Poisoning* (a locked-room style puzzle), *The Harbor Ledger* (insurance fraud gone wrong), *The Greenhouse Alibi* (a timetable puzzle).
+
+## Crime roles (requested)
+In addition to the Gangster career, criminal paths are available for both player characters and townies:
+- **Thief / Burglar:** pickpocketing, break-ins and fencing stolen goods. Each lot's security (locks, alarms, a nosy neighbor) affects the odds.
+- **Robber:** planned stick-ups and the bank or armored-truck jobs that cap the Gangster chain.
+- **Murderer (story-driven):** an NPC or player character can commit a murder that becomes a **Case Files** investigation. The killer's household tries to hide evidence while a Detective household gathers it.
+- **Consequences:** Heat, witnesses, arrest, trial, jail time, and damaged relationships.
+- **Presentation:** stylized like a crime drama, not real-world instructions. Violence is off-screen or cut away; the aftermath, the investigation and the consequences are what you see.
+
+## Mature Content setting (requested)
+- Available in **private worlds only**, off by default, and age-gated with a birthdate check. A real ID check would need a third-party verification provider, which costs money and needs your approval first.
+- **What it unlocks:**
+  - more detailed, non-graphic crime and Case Files descriptions
+  - stronger language
+  - darker storylines (affairs, betrayal, addiction, crime)
+  - more intimate romance that **fades to black** at the explicit moment
+- **Not included:** explicit sexual content. Intimacy is never shown on screen.
+- **Shared online worlds** always use the standard content level.
