@@ -3,6 +3,8 @@
 ## Vision
 
 Build an original life simulation in a believable, present-day coastal town. Detailed human characters, grounded movement, everyday routines, recognizable architecture, and consistent lighting should give the player a sense of presence from both camera perspectives. Add fantasy selectively through specific stories and places.
+Use free tooling such as Godot and Blender, with original or freely licensed assets. Favor reusable locations, rigs, animations, and materials to keep production costs and credit use low. Get approval before using a paid or credit-metered service.
+
 Mix the household depth of a life sim with the freedom of a third-person open world. A player can leave a family home, head into town, and return to the same household. Time, ongoing obligations, relationships, and consequences carry across both views.
 - **Home mode** (built in M1): use an orbiting camera to build a home, manage needs and relationships, raise a family, and run a business.
 - **Street mode** (new): a third-person camera you walk, run and drive through an open coastal town:
