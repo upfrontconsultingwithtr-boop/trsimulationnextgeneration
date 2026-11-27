@@ -5,6 +5,8 @@ extends Control
 signal speed_pressed(i: int)
 signal action_pressed(type: String)
 signal cancel_pressed(action_id: String)
+signal structure_selected(tool: String)
+signal structure_rotated
 signal furnish_toggled
 signal walls_pressed
 signal catalog_pressed(item: String)
@@ -25,6 +27,9 @@ var focus_label: Label
 var action_bar: HBoxContainer
 var furnish_panel: PanelContainer
 var furnish_status: Label
+var structure_tools: OptionButton
+var structure_rotate: Button
+var catalog_grid: GridContainer
 var walls_btn: Button
 var holding_label: Label
 var cat_btns := {}
@@ -81,17 +86,37 @@ func _ready() -> void:
 		var b := Button.new(); b.focus_mode = Control.FOCUS_NONE
 		b.text = "%s  %s" % [InputConfig.label(a[1]), Simulation.ACTIONS[a[0]]["label"]]
 		var t: String = a[0]; b.pressed.connect(func(): action_pressed.emit(t)); action_bar.add_child(b)
-	var fb := Button.new(); fb.focus_mode = Control.FOCUS_NONE; fb.text = "%s  Furnish" % InputConfig.label("furnish_toggle"); fb.pressed.connect(func(): furnish_toggled.emit()); action_bar.add_child(fb)
+	var fb := Button.new(); fb.focus_mode = Control.FOCUS_NONE; fb.text = "%s  Build" % InputConfig.label("furnish_toggle"); fb.pressed.connect(func(): furnish_toggled.emit()); action_bar.add_child(fb)
 	var bz := Button.new(); bz.focus_mode = Control.FOCUS_NONE; bz.text = "%s  Shop" % InputConfig.label("business_panel"); bz.pressed.connect(func(): business_pressed.emit()); action_bar.add_child(bz)
 	furnish_panel = PanelContainer.new(); bv.add_child(furnish_panel)
 	furnish_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var fv := VBoxContainer.new(); furnish_panel.add_child(fv)
 	var fh := HBoxContainer.new(); fv.add_child(fh)
-	fh.add_child(UiTheme.title_label("Furnish", 20))
+	fh.add_child(UiTheme.title_label("Build", 20))
 	var u := Button.new(); u.text = "Undo (%s)" % InputConfig.label("undo"); u.focus_mode = Control.FOCUS_NONE; u.pressed.connect(func(): undo_pressed.emit()); fh.add_child(u)
 	var r := Button.new(); r.text = "Redo (%s)" % InputConfig.label("redo"); r.focus_mode = Control.FOCUS_NONE; r.pressed.connect(func(): redo_pressed.emit()); fh.add_child(r)
 	var x := Button.new(); x.text = "Done (%s)" % InputConfig.label("furnish_toggle"); x.focus_mode = Control.FOCUS_NONE; x.pressed.connect(func(): furnish_toggled.emit()); fh.add_child(x)
-	var grid := GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 6); fv.add_child(grid)
+	structure_tools = OptionButton.new()
+	structure_tools.focus_mode = Control.FOCUS_NONE
+	structure_tools.add_item("Furniture")
+	for tool in Furnishing.STRUCTURE:
+		structure_tools.add_item(Furnishing.STRUCTURE[tool]["name"])
+	structure_tools.item_selected.connect(func(index):
+		grid_visibility(index == 0)
+		structure_selected.emit("" if index == 0 else Furnishing.STRUCTURE.keys()[index - 1])
+	)
+	fh.add_child(structure_tools)
+	structure_rotate = Button.new()
+	structure_rotate.text = "Rotate"
+	structure_rotate.focus_mode = Control.FOCUS_NONE
+	structure_rotate.pressed.connect(func(): structure_rotated.emit())
+	fh.add_child(structure_rotate)
+	var cutaway := Button.new()
+	cutaway.text = "Walls"
+	cutaway.focus_mode = Control.FOCUS_NONE
+	cutaway.pressed.connect(func(): walls_pressed.emit())
+	fh.add_child(cutaway)
+	var grid := GridContainer.new(); grid.columns = 4; grid.add_theme_constant_override("h_separation", 6); fv.add_child(grid); catalog_grid = grid
 	for i in Catalog.ORDER.size():
 		var item: String = Catalog.ORDER[i]
 		var b := Button.new(); b.toggle_mode = true; b.focus_mode = Control.FOCUS_NONE; b.custom_minimum_size.x = 190
@@ -99,7 +124,7 @@ func _ready() -> void:
 		b.pressed.connect(func(): catalog_pressed.emit(item)); grid.add_child(b); cat_btns[item] = b
 	furnish_status = Label.new(); fv.add_child(furnish_status)
 	var help := Label.new(); help.add_theme_font_size_override("font_size", 14)
-	help.text = "Click or %s place · %s rotate · %s sell hovered · %s/%s/%s/%s nudge" % [InputConfig.label("interact"), InputConfig.label("furnish_rotate"), InputConfig.label("furnish_sell"), InputConfig.label("furnish_nudge_up"), InputConfig.label("furnish_nudge_left"), InputConfig.label("furnish_nudge_down"), InputConfig.label("furnish_nudge_right")]
+	help.text = "Click, tap, or %s place · %s rotate · %s sell hovered · %s/%s/%s/%s nudge" % [InputConfig.label("interact"), InputConfig.label("furnish_rotate"), InputConfig.label("furnish_sell"), InputConfig.label("furnish_nudge_up"), InputConfig.label("furnish_nudge_left"), InputConfig.label("furnish_nudge_down"), InputConfig.label("furnish_nudge_right")]
 	fv.add_child(help)
 	furnish_panel.visible = false
 	story_layer = CenterContainer.new(); story_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); story_layer.visible = false
@@ -156,6 +181,9 @@ func _spacer(parent: Node) -> void:
 func _panel(parent: Node) -> PanelContainer:
 	var p := PanelContainer.new(); parent.add_child(p); return p
 
+func grid_visibility(show_catalog: bool) -> void:
+	catalog_grid.visible = show_catalog
+
 func refresh(sim: Simulation, furnishing_mode: bool, wall_mode: int, focus_text: String) -> void:
 	var me := sim.controlled()
 	var sp := int(sim.state["speed"])
@@ -174,7 +202,7 @@ func refresh(sim: Simulation, furnishing_mode: bool, wall_mode: int, focus_text:
 			var rel: Dictionary = sim.state["relationships"].get(GameState.rel_key(me["id"], other), {})
 			fam.append("%s %s (%s, friendship %d)" % [_tie_word(t, me["id"]), sim.character(other).get("name", other).get_slice(" ", 0), String(sim.character(other).get("age", "")), int(rel.get("friendship", 0))])
 	family_label.text = ("Family & friends:\n" + "\n".join(fam)) if not fam.is_empty() else ""
-	mode_label.text = "Furnish mode" if furnishing_mode else ("Paused" if sp == 0 else "Live mode")
+	mode_label.text = "Build mode" if furnishing_mode else ("Paused" if sp == 0 else "Live mode")
 	var biz := Business.for_lot(sim.state, sim.state["active_lot"])
 	if not biz.is_empty():
 		var waiting := 0

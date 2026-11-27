@@ -3,7 +3,7 @@ extends RefCounted
 ## Lot maps on a 0.5 m grid (32×32 cells = 16×16 m). Legend:
 ##   ' ' lawn   '=' stone path   '.' walnut floor   't' terracotta porch tile   'g' garden bed (blocked)
 ##   '#' stucco wall   'D' door   'W' window   'A' porch arch column (blocked)   'G' gate / arrival point
-## Pendants and starter furniture are listed per lot. Editing these strings is the lot editor of M1.
+## Pendants and starter furniture are listed per lot. Original layouts serve as the base for per-lot edits.
 
 const SIZE := 32
 
@@ -299,11 +299,17 @@ const LAYOUTS := {
 static func layout(id: String) -> Dictionary:
 	return LAYOUTS.get(id, {})
 
-static func tile(id: String, c: Vector2i) -> String:
+static func tile(id: String, c: Vector2i, edits: Dictionary = {}) -> String:
 	if c.x < 0 or c.y < 0 or c.x >= SIZE or c.y >= SIZE:
 		return "X"
 	var rows: Array = LAYOUTS[id]["rows"]
-	return String(rows[c.y])[c.x]
+	return String(edits.get(cell_key(c), String(rows[c.y]).substr(c.x, 1).rpad(1, " ")))
+
+static func cell_key(c: Vector2i) -> String:
+	return "%d,%d" % [c.x, c.y]
+
+static func is_opening(t: String) -> bool:
+	return t == "D" or t == "W"
 
 static func is_structural_block(t: String) -> bool:
 	return t == "#" or t == "W" or t == "A" or t == "g" or t == "X"
@@ -311,19 +317,18 @@ static func is_structural_block(t: String) -> bool:
 static func is_indoor(t: String) -> bool:
 	return t == "."
 
-static func cells_of(id: String, ch: String) -> Array[Vector2i]:
+static func cells_of(id: String, ch: String, edits: Dictionary = {}) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	var rows: Array = LAYOUTS[id]["rows"]
-	for y in rows.size():
-		for x in String(rows[y]).length():
-			if String(rows[y])[x] == ch:
+	for y in SIZE:
+		for x in SIZE:
+			if tile(id, Vector2i(x, y), edits) == ch:
 				out.append(Vector2i(x, y))
 	return out
 
 ## Cells that furniture may never cover: doors, their thresholds, and the arrival gate.
-static func keep_clear(id: String) -> Dictionary:
+static func keep_clear(id: String, edits: Dictionary = {}) -> Dictionary:
 	var out := {}
-	for d in cells_of(id, "D") + cells_of(id, "G"):
+	for d in cells_of(id, "D", edits) + cells_of(id, "G"):
 		out[d] = true
 		for n in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			out[d + n] = true

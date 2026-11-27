@@ -22,6 +22,9 @@ var furnishing := false
 var acc := 0.0
 var ghost: Node3D
 var ghost_item := ""
+var structure_tool := ""
+var structure_ghost: MeshInstance3D
+var structure_tint: StandardMaterial3D
 var ghost_rot := 0
 var ghost_cell := Vector2i(16, 16)
 var ghost_from_mouse := true
@@ -90,6 +93,8 @@ func _wire_ui() -> void:
 	hud.furnish_toggled.connect(_toggle_furnish)
 	hud.walls_pressed.connect(func(): world.wall_mode = (world.wall_mode + 1) % 3)
 	hud.catalog_pressed.connect(_select_item)
+	hud.structure_selected.connect(_select_structure)
+	hud.structure_rotated.connect(_rotate_build)
 	hud.undo_pressed.connect(func(): _history(true))
 	hud.redo_pressed.connect(func(): _history(false))
 	hud.menu_pressed.connect(_open_pause)
@@ -147,6 +152,7 @@ func start_new(preset: String) -> void:
 
 func _begin(s: Simulation) -> void:
 	sim = s; furn = Furnishing.new(sim)
+	_select_structure("")
 	world.build(sim, sim.state["active_lot"])
 	world.wall_mode = 1
 	playing = true; furnishing = false; menus.visible = false; hud.visible = true
@@ -320,7 +326,7 @@ func _process(delta: float) -> void:
 		world.set_time(sim.minute() if playing else 17 * 60 + 20)
 		world.sync_characters(delta, sim.minute())
 		world.update_cutaway(rig.flat_forward())
-	if furnishing: _update_ghost()
+	if furnishing: _update_ghost(get_viewport().get_mouse_position())
 	_update_focus_marker()
 
 # ------------------------------------------------------------------ input
@@ -479,13 +485,58 @@ func _update_focus_marker() -> void:
 # ------------------------------------------------------------------ furnishing
 func _toggle_furnish() -> void:
 	furnishing = not furnishing
-	if not furnishing and ghost: ghost.queue_free(); ghost = null; ghost_item = ""
+	_select_structure("")
+	ghost_from_mouse = true
 	for b in hud.cat_btns.values(): b.button_pressed = false
 	play("ui_click")
-	if furnishing: hud.furnish_status.text = "Pick an item (1–8) to start placing."
+	if furnishing: hud.furnish_status.text = "Choose furniture or a building tool."
+
+func _select_structure(tool: String) -> void:
+	if ghost:
+		ghost.queue_free()
+		ghost = null
+	ghost_item = ""
+	structure_tool = tool
+	ghost_rot = 0
+	for button in hud.cat_btns.values():
+		button.button_pressed = false
+	if tool.is_empty():
+		hud.structure_tools.select(0)
+		hud.grid_visibility(true)
+		hud.furnish_status.text = "Choose furniture or a building tool."
+	if structure_ghost:
+		structure_ghost.hide()
+
+func _rotate_build() -> void:
+	ghost_rot = (ghost_rot + 1) % 4
+
+func _update_structure_ghost() -> void:
+	if structure_ghost == null:
+		structure_ghost = MeshInstance3D.new()
+		structure_ghost.mesh = BoxMesh.new()
+		structure_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		structure_tint = StandardMaterial3D.new()
+		structure_tint.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		structure_tint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		structure_ghost.material_override = structure_tint
+		add_child(structure_ghost)
+	var plan := furn.plan_structure(structure_tool, ghost_cell, ghost_rot % 2 == 1)
+	var cells: Array = plan.get("cells", [ghost_cell])
+	var first := WorldView.cw(cells.front())
+	var last := WorldView.cw(cells.back())
+	var span := (last - first).abs()
+	var tile: String = Furnishing.STRUCTURE[structure_tool]["tile"]
+	var height := WorldView.WALL_H if tile in ["#", "D", "W"] else 0.06
+	var mesh := structure_ghost.mesh as BoxMesh
+	mesh.size = Vector3(Catalog.CELL + span.x, height, Catalog.CELL + span.z)
+	structure_ghost.position = (first + last) * 0.5 + Vector3.UP * (0.05 + height * 0.5)
+	structure_tint.albedo_color = Color(0.3, 0.85, 0.6, 0.32) if plan["ok"] else Color(0.95, 0.35, 0.25, 0.42)
+	structure_ghost.visible = Rect2i(0, 0, LotLayouts.SIZE, LotLayouts.SIZE).has_point(ghost_cell)
+	var price: int = Furnishing.STRUCTURE[structure_tool]["price"]
+	hud.furnish_status.text = "%s · %s left" % [Catalog.format_cents(price), Catalog.format_cents(sim.funds() - price)] if plan["ok"] else plan["reason"]
 
 func _select_item(item: String) -> void:
-	if ghost: ghost.queue_free()
+	_select_structure("")
 	ghost_item = item; ghost_rot = 0
 	ghost = WorldView.make_furniture(item, ghost_cell, 0); add_child(ghost)
 	for b in ghost.find_children("*", "StaticBody3D", true, false): b.queue_free()
@@ -497,19 +548,27 @@ func _furnish_input(e: InputEvent) -> void:
 		if e is InputEventKey and e.pressed and not e.echo and (e as InputEventKey).physical_keycode == KEY_1 + i: _select_item(Catalog.ORDER[i]); return
 	if e.is_action_pressed("undo"): _history(true)
 	elif e.is_action_pressed("redo"): _history(false)
-	elif e.is_action_pressed("furnish_rotate") and ghost: ghost_rot = (ghost_rot + 1) % 4
+	elif e.is_action_pressed("furnish_rotate"): _rotate_build()
 	elif e.is_action_pressed("furnish_sell"): _sell_hovered()
-	elif e.is_action_pressed("interact") and ghost: _place()
+	elif e.is_action_pressed("interact") and (ghost or not structure_tool.is_empty()): _place()
 	elif e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
-		if ghost: _place()
+		if ghost or not structure_tool.is_empty():
+			ghost_from_mouse = true
+			_update_ghost(e.position)
+			_place()
 	elif e is InputEventMouseMotion: ghost_from_mouse = true
 	for d in [["furnish_nudge_up", Vector2i(0, -1)], ["furnish_nudge_down", Vector2i(0, 1)], ["furnish_nudge_left", Vector2i(-1, 0)], ["furnish_nudge_right", Vector2i(1, 0)]]:
 		if e.is_action_pressed(d[0]): ghost_from_mouse = false; ghost_cell += d[1]
 
-func _update_ghost() -> void:
+func _update_ghost(pointer: Vector2) -> void:
+	if not structure_tool.is_empty():
+		if ghost_from_mouse:
+			ghost_cell = _ground_cell(pointer)
+		_update_structure_ghost()
+		return
 	if ghost == null: return
 	if ghost_from_mouse:
-		var c := _ground_cell(get_viewport().get_mouse_position())
+		var c := _ground_cell(pointer)
 		var fs := Catalog.footprint_size(ghost_item, ghost_rot)
 		if c.x >= 0: ghost_cell = c - Vector2i((fs.x - 1) / 2, (fs.y - 1) / 2)
 	ghost.transform = WorldView.furniture_transform(ghost_item, ghost_cell, ghost_rot)
@@ -523,6 +582,15 @@ func _update_ghost() -> void:
 	hud.furnish_status.text = ("Valid — %s for %s. After purchase: %s" % [Catalog.get_def(ghost_item)["name"], Catalog.format_cents(price), Catalog.format_cents(sim.funds() - price)]) if ok else ("Blocked — %s" % (v["reason"] if not v["ok"] else "not enough funds"))
 
 func _place() -> void:
+	if not structure_tool.is_empty():
+		var edit := furn.edit_structure(structure_tool, ghost_cell, ghost_rot % 2 == 1)
+		if edit["ok"]:
+			world.refresh_structure()
+			play("coins")
+		else:
+			hud.push_log("error", edit["reason"])
+			play("ui_error")
+		return
 	var r := furn.buy(ghost_item, ghost_cell, ghost_rot)
 	if r["ok"]:
 		world.refresh_furniture(); play("coins")
@@ -540,5 +608,11 @@ func _sell_hovered() -> void:
 
 func _history(is_undo: bool) -> void:
 	var r := furn.undo() if is_undo else furn.redo()
-	if r["ok"]: world.refresh_furniture(); play("ui_click"); hud.push_log("info", "%s. Funds now %s." % ["Undone" if is_undo else "Redone", Catalog.format_cents(sim.funds())])
+	if r["ok"]:
+		if r.get("op") == "structure":
+			world.refresh_structure()
+		else:
+			world.refresh_furniture()
+		play("ui_click")
+		hud.push_log("info", "%s. Funds now %s." % ["Undone" if is_undo else "Redone", Catalog.format_cents(sim.funds())])
 	else: hud.push_log("error", r["reason"]); play("ui_error")

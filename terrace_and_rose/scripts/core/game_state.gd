@@ -133,6 +133,18 @@ static func validate(s: Variant) -> Array[String]:
 	for lid in s["lots"]:
 		var lot: Dictionary = s["lots"][lid]
 		if LotLayouts.layout(String(lot.get("layout", ""))).is_empty(): e.append("lot %s unknown layout" % lid)
+		var edits: Variant = lot.get("structure", {})
+		if not edits is Dictionary:
+			e.append("lot %s structure must be an object" % lid)
+		else:
+			for key in edits:
+				var parts := String(key).split(",")
+				if parts.size() != 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int():
+					e.append("lot %s has an invalid structure cell" % lid)
+					continue
+				var cell := Vector2i(parts[0].to_int(), parts[1].to_int())
+				if key != LotLayouts.cell_key(cell) or not Rect2i(0, 0, LotLayouts.SIZE, LotLayouts.SIZE).has_point(cell) or edits[key] not in [" ", ".", "#", "D", "W", "t"]:
+					e.append("lot %s has an invalid structure edit" % lid)
 		for fid in lot.get("furniture", {}):
 			var f: Dictionary = lot["furniture"][fid]
 			if not Catalog.has(String(f.get("item", ""))): e.append("unknown item in %s" % fid)

@@ -18,19 +18,37 @@ var env: Environment
 var wall_mode := 1                    # 0 up, 1 cutaway, 2 down
 var house_center := Vector3(8, 0, 6)
 var _lay := ""
+var structure_nodes: Array[Node] = []
 static var low_graphics := false   # software GL / low-end PCs: one cheap sun shadow, no per-light passes
 
 func build(s: Simulation, lot_id: String) -> void:
 	sim = s; lid = lot_id; _lay = sim.layout_id(lid)
-	for c in get_children(): c.queue_free()
+	for c in get_children():
+		remove_child(c)
+		c.queue_free()
+	structure_nodes.clear()
 	walls.clear(); furn_nodes.clear(); avatars.clear(); lights_interior.clear()
 	_environment()
 	_ground()
+	refresh_structure()
+	_decor()
+	refresh_furniture()
+
+func refresh_structure() -> void:
+	for node in structure_nodes:
+		remove_child(node)
+		node.queue_free()
+	structure_nodes.clear()
+	for i in range(walls.size() - 1, -1, -1):
+		if not walls[i].get("porch", false):
+			walls.remove_at(i)
+	var start := get_child_count()
+	house_center = Vector3(8, 0, 6)
 	_floors()
 	_walls_and_openings()
 	_roof()
-	_decor()
-	refresh_furniture()
+	for i in range(start, get_child_count()):
+		structure_nodes.append(get_child(i))
 
 static func cw(c: Vector2i) -> Vector3:   # cell centre in world space
 	return Vector3((c.x + 0.5) * Catalog.CELL, 0.0, (c.y + 0.5) * Catalog.CELL)
@@ -96,19 +114,19 @@ func _floors() -> void:
 	var by := {".": [] as Array[Vector2i], "t": [] as Array[Vector2i], "=": [] as Array[Vector2i]}
 	for y in LotLayouts.SIZE:
 		for x in LotLayouts.SIZE:
-			var t := LotLayouts.tile(_lay, Vector2i(x, y))
+			var t := sim.tile(lid, Vector2i(x, y))
 			if t == "D" or t == "#" or t == "W": by["."].append(Vector2i(x, y))
 			elif by.has(t): by[t].append(Vector2i(x, y))
 			elif t == "G": by["="].append(Vector2i(x, y))
-	_mesh(_quad_mesh(by["."], 0.03), Palette.get_mat("walnut_floor"), Vector3.ZERO, false)
-	_mesh(_quad_mesh(by["t"], 0.02), Palette.get_mat("terracotta_floor"), Vector3.ZERO, false)
-	_mesh(_quad_mesh(by["="], 0.015), Palette.get_mat("path"), Vector3.ZERO, false)
+	for spec in [[".", 0.03, "walnut_floor"], ["t", 0.02, "terracotta_floor"], ["=", 0.015, "path"]]:
+		if not by[spec[0]].is_empty():
+			_mesh(_quad_mesh(by[spec[0]], spec[1]), Palette.get_mat(spec[2]), Vector3.ZERO, false)
 	var xs := []; var zs := []
 	for c in by["."]: xs.append(c.x); zs.append(c.y)
 	if not xs.is_empty(): house_center = Vector3((xs.min() + xs.max() + 1) * 0.25, 0, (zs.min() + zs.max() + 1) * 0.25)
 
 func _is_wallish(c: Vector2i) -> bool:
-	var t := LotLayouts.tile(_lay, c)
+	var t := sim.tile(lid, c)
 	return t == "#" or t == "W" or t == "D"
 
 func _walls_and_openings() -> void:
@@ -117,7 +135,7 @@ func _walls_and_openings() -> void:
 	for y in LotLayouts.SIZE:
 		for x in LotLayouts.SIZE:
 			var c := Vector2i(x, y)
-			var t := LotLayouts.tile(_lay, c)
+			var t := sim.tile(lid, c)
 			if t != "#" and t != "W" and t != "D": continue
 			var node := Node3D.new(); node.position = cw(c); add_child(node)
 			if t == "#":
@@ -132,7 +150,7 @@ func _walls_and_openings() -> void:
 				_child_mesh(node, st.commit(), stucco, Vector3.ZERO)
 			elif not done.has(c):
 				# W/D come in pairs: place one 1 m module centred between the pair
-				var horiz := LotLayouts.tile(_lay, c + Vector2i(1, 0)) == t
+				var horiz := sim.tile(lid, c + Vector2i(1, 0)) == t
 				var other := c + (Vector2i(1, 0) if horiz else Vector2i(0, 1))
 				done[other] = true
 				var mid := (cw(c) + cw(other)) * 0.5 - node.position
@@ -142,7 +160,7 @@ func _walls_and_openings() -> void:
 					_glb(mod, "res://assets/models/building/door_frame.glb")
 					var leaf := _glb(mod, "res://assets/models/building/door_leaf.glb")
 					# hinge on the left jamb; open 90 degrees toward the indoor side
-					var inside_plus := LotLayouts.tile(_lay, c + (Vector2i(0, 1) if horiz else Vector2i(1, 0))) == "."
+					var inside_plus := sim.tile(lid, c + (Vector2i(0, 1) if horiz else Vector2i(1, 0))) == "."
 					leaf.position.x = -0.44; leaf.rotation.y = -PI / 2 if inside_plus else PI / 2
 			walls.append({"node": node, "pos": node.position})
 
@@ -155,16 +173,19 @@ func _glb(parent: Node3D, path: String) -> Node3D:
 
 func _roof() -> void:
 	var xs := []; var zs := []
-	for c in LotLayouts.cells_of(_lay, "#"): xs.append(c.x); zs.append(c.y)
+	for c in LotLayouts.cells_of(_lay, "#", sim.lot(lid).get("structure", {})): xs.append(c.x); zs.append(c.y)
 	roof = Node3D.new(); add_child(roof)
 	if xs.is_empty(): return
 	var x0: float = xs.min() * 0.5 - 0.45; var x1: float = (xs.max() + 1) * 0.5 + 0.45
 	var z0: float = zs.min() * 0.5 - 0.45; var z1: float = (zs.max() + 1) * 0.5 + 0.45
 	var h := 2.2; var y := WALL_H
-	var r0 := Vector3(x0 + (z1 - z0) / 2, y + h, (z0 + z1) / 2); var r1 := Vector3(x1 - (z1 - z0) / 2, y + h, (z0 + z1) / 2)
+	var inset := minf(z1 - z0, x1 - x0) * 0.5
+	var r0 := Vector3(x0 + inset, y + h, (z0 + z1) / 2)
+	var r1 := Vector3(x1 - inset, y + h, (z0 + z1) / 2)
 	var a := Vector3(x0, y, z0); var b := Vector3(x1, y, z0); var c := Vector3(x1, y, z1); var d := Vector3(x0, y, z1)
 	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for tri in [[a, r0, r1], [a, r1, b], [b, r1, c], [c, r1, r0], [c, r0, d], [d, r0, a], [a, b, c], [a, c, d]]:
+		if tri[0] == tri[1] or tri[1] == tri[2] or tri[0] == tri[2]: continue
 		for v in tri: st.set_uv(Vector2(v.x + v.z, v.y * 1.4)); st.add_vertex(v)
 	st.generate_normals(); st.generate_tangents()
 	var mi := MeshInstance3D.new(); mi.mesh = st.commit(); mi.material_override = Palette.get_mat("roof_tile"); roof.add_child(mi)

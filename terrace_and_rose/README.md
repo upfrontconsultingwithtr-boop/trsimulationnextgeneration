@@ -68,6 +68,13 @@ Someone has to work the register: press **6**, or family members will do it on t
 - **Shift summary:** closing reports customers served and walked out, revenue, supply costs and profit, and checks that the ledger matches the change in household funds.
 Any household can start a business on its own lot: open the Shop panel, then place a **Shop Register** from Furnish.
 
+## Home editor
+
+Press **B** or select **Build**, then choose Furniture, Stucco wall, Door, Window, Walnut floor or Remove.
+Point at a lot cell for a placement and budget preview. Click, tap, or use the mapped interact key to apply it.
+Doors and windows span two cells. Use **Rotate** or **R** to switch their direction, and **Walls** to cycle the cutaway view.
+Undo and redo cover structure, furniture and funds in the current session. Save to keep your changes.
+
 ## Desktop builds
 Export templates for 4.5.1 are free from the Godot download page (Editor → Manage Export Templates).
 ```bash

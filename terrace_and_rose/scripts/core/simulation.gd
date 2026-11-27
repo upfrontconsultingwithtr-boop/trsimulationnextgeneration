@@ -35,6 +35,9 @@ func household() -> Dictionary: return state["households"][state["active_househo
 func funds() -> int: return int(household()["funds"])
 func lot(lid: String) -> Dictionary: return state["lots"][lid]
 func layout_id(lid: String) -> String: return String(state["lots"][lid]["layout"])
+func tile(lid: String, cell: Vector2i) -> String:
+	return LotLayouts.tile(layout_id(lid), cell, lot(lid).get("structure", {}))
+
 func furniture(lid: String) -> Dictionary: return state["lots"][lid]["furniture"]
 func chars_on(lid: String) -> Array:
 	var out := []
@@ -57,10 +60,9 @@ func rebuild_nav(lid: String) -> void:
 	g.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	g.default_compute_heuristic = AStarGrid2D.HEURISTIC_OCTILE
 	g.update()
-	var lay := layout_id(lid)
 	for y in LotLayouts.SIZE:
 		for x in LotLayouts.SIZE:
-			if LotLayouts.is_structural_block(LotLayouts.tile(lay, Vector2i(x, y))): g.set_point_solid(Vector2i(x, y))
+			if LotLayouts.is_structural_block(tile(lid, Vector2i(x, y))): g.set_point_solid(Vector2i(x, y))
 	for fid in furniture(lid):
 		var f: Dictionary = furniture(lid)[fid]
 		if Catalog.get_def(f["item"])["layer"] == "floor": continue
