@@ -8,11 +8,13 @@ It is offline and desktop-first, uses local saves, and costs $0 to develop: no p
 
 The planned desktop release is a single adult-only explicit edition. Intimacy fades to black in this development build.
 
-## Download (Windows / Linux)
-Every push builds the game automatically. Open the GitHub repository and go to **Actions**, then **Terrace & Rose desktop builds**.
-Pick the latest green run and download **TerraceAndRose-Windows** or **TerraceAndRose-Linux** under *Artifacts*. You must be signed in to GitHub.
-Unzip it and run `TerraceAndRose.exe` on Windows or `TerraceAndRose.x86_64` on Linux. Builds are kept for 30 days.
-Windows may show a SmartScreen warning because the build isn't code-signed (signing certificates cost money). Choose *More info* and then *Run anyway*.
+## Download for desktop
+
+Open **Actions → Terrace & Rose desktop builds** in the GitHub repository. Sign in to download an artifact. macOS and Linux are exported and uploaded first, followed by Windows. Downloads are kept for 30 days.
+
+- **TerraceAndRose-macOS** supports Intel and Apple silicon. Extract the artifact ZIP, then extract the included `TerraceAndRose-macOS.zip` to get the app. This development build is ad-hoc signed and has no Apple notarization.
+- **TerraceAndRose-Linux** contains `TerraceAndRose.x86_64`.
+- **TerraceAndRose-Windows** contains `TerraceAndRose.exe`. Windows may display a SmartScreen warning for this development build.
 
 ### Chromebook with Intel or AMD
 
@@ -105,11 +107,19 @@ Undo and redo cover structure, furniture and funds in the current session. Save 
 ## Desktop builds
 Export templates for 4.5.1 are free from the Godot download page (Editor → Manage Export Templates).
 ```bash
+mkdir -p export/macos export/linux export/windows
+godot --headless --path . --export-release "macOS Desktop" export/macos/TerraceAndRose-macOS.zip
 godot --headless --path . --export-release "Linux Desktop" export/linux/TerraceAndRose.x86_64
 godot --headless --path . --export-release "Windows Desktop" export/windows/TerraceAndRose.exe
 ```
-Builds go to `export/`, which is git-ignored because the binaries are 80–110 MB. Add `-- --low` at launch for low-end PCs:
+Builds go to the git-ignored `export/` directory. Add `-- --low` at launch for low-end PCs:
 it uses one cheap sun shadow and skips the per-lamp lighting passes.
+
+## iPad development and desktop access
+
+The **iPad Development** preset exports an Xcode project for personal device testing. Open this project in Godot 4.5.1 on a Mac with Xcode and the official export templates. In **Project → Export → iPad Development**, add your Apple development team ID. Export into an empty directory using the name `TerraceAndRose`. Open the generated Xcode project, select your team under **Signing & Capabilities**, and run it on your connected iPad. Apple supports personal device testing with a free Xcode Personal Team, which requires periodic reprovisioning.
+
+The desktop game uses local saves and has no account login. A native iPad test build starts with its own saves. To use the exact desktop save on an iPad, stream the running desktop game from its host computer using a remote-play client such as Steam Link.
 
 ## Rebuild the art and audio (optional)
 `blender -b --python-exit-code 1 -P tools/blender/build_assets.py` regenerates every GLB, texture, WAV and `.blend` source.
