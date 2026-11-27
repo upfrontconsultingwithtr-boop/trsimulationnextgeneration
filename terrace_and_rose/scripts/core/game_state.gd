@@ -3,7 +3,7 @@ extends RefCounted
 ## Plain-data world state. Everything here is JSON-safe integers/strings/arrays/dicts so saves are exact.
 ## Money: integer cents. Time: integer minutes (+ sub-minute ticks). Needs: 0..10000 (hundredths of a percent).
 
-const VERSION := 1
+const VERSION := 2
 const TICKS_PER_MINUTE := 4
 const NEED_KEYS := ["hunger", "energy", "social", "comfort"]
 const NEED_MAX := 10000
@@ -28,16 +28,36 @@ const PRESET_ORDER := ["mara", "jin", "ellis"]
 
 static func new_character(id: String, preset: String, household: String, lot: String, cell: Vector2i) -> Dictionary:
 	var p: Dictionary = PRESETS[preset]
-	return {"id": id, "name": p["name"], "preset": preset, "pronouns": p["pronouns"], "age": p["age"], "look": p["look"].duplicate(true),
+	var c := make_character(id, p["name"], p["look"].duplicate(true), p["age"], p["pronouns"], household, lot, cell, [], "")
+	c["preset"] = preset
+	return c
+
+static func make_character(id: String, name: String, look: Dictionary, age: String, pronouns: String, household: String, lot: String, cell: Vector2i, traits: Array, aspiration: String) -> Dictionary:
+	return {"id": id, "name": name, "preset": "", "pronouns": pronouns, "age": age, "look": look, "traits": traits, "aspiration": aspiration,
 		"household": household, "lot": lot, "cell": [cell.x, cell.y], "facing": 0, "pose": "stand", "anim": "idle",
 		"anchor": [], "holding": "", "queue": [], "current": {}, "react_until": 0, "ai": "player", "ai_next": 0,
 		"needs": {"hunger": 7000, "energy": 8000, "social": 5500, "comfort": 6500}}
+
+## Upgrade older saves in place. v1 (Milestone 1) -> v2 (neighborhood-ready). Never drops data.
+static func migrate(s: Dictionary) -> Dictionary:
+	if int(s.get("version", 0)) == 1:
+		s["world"] = "alder"
+		s["family"] = []
+		s["settings"] = {"inactive_progress": true, "aging": false}
+		s["story"] = {"flags": {}, "fired": {}, "pending": [], "log": []}
+		for cid in s.get("characters", {}):
+			var c: Dictionary = s["characters"][cid]
+			if not c.has("traits"): c["traits"] = []
+			if not c.has("aspiration"): c["aspiration"] = ""
+		s["version"] = 2
+	return s
 
 ## Milestone-1 scenario: one controlled adult at Alder Bungalow, a neighbor who visits at 10:00 on day 1.
 static func new_alder_game(preset: String) -> Dictionary:
 	var neighbor := "ellis" if preset != "ellis" else "mara"
 	var s := {
-		"version": VERSION, "minute": START_MINUTE, "subtick": 0, "speed": 1, "next_id": 1,
+		"version": VERSION, "world": "alder", "family": [], "settings": {"inactive_progress": true, "aging": false},
+		"story": {"flags": {}, "fired": {}, "pending": [], "log": []}, "minute": START_MINUTE, "subtick": 0, "speed": 1, "next_id": 1,
 		"active_household": "h1", "active_lot": "lot1", "controlled": "c1",
 		"households": {"h1": {"id": "h1", "name": "Alder Household", "funds": 60000, "members": ["c1"], "lot": "lot1"},
 			"h2": {"id": "h2", "name": "Down the Lane", "funds": 120000, "members": ["c2"], "lot": ""}},
@@ -96,7 +116,7 @@ static func validate(s: Variant) -> Array[String]:
 	var e: Array[String] = []
 	if typeof(s) != TYPE_DICTIONARY:
 		return ["state is not an object"]
-	for k in ["version", "minute", "subtick", "speed", "next_id", "active_household", "active_lot", "controlled", "households", "lots", "characters", "relationships", "reservations", "schedule"]:
+	for k in ["version", "minute", "subtick", "speed", "next_id", "active_household", "active_lot", "controlled", "households", "lots", "characters", "relationships", "reservations", "schedule", "story", "settings", "family"]:
 		if not s.has(k): e.append("missing key: " + k)
 	if not e.is_empty(): return e
 	if int(s["version"]) != VERSION: e.append("unsupported version %s" % s["version"])

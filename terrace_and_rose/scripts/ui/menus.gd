@@ -9,10 +9,17 @@ signal resume
 signal save_requested
 signal load_requested
 signal quit_to_title
+signal neighborhood_new(hid: String)
+signal neighborhood_continue
+signal switch_household(hid: String)
+signal toggle_inactive
 
 var _rebinding := ""
 var _rebind_btns := {}
 var has_save := false
+var has_hood_save := false
+var in_neighborhood := false
+var inactive_on := true
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -40,8 +47,10 @@ func show_title() -> void:
 	var v := _card(460)
 	v.add_child(UiTheme.title_label("Terrace & Rose", 54))
 	var sub := Label.new(); sub.text = "A life simulation by the sea — Milestone 1: A Day at Alder Bungalow"; sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; v.add_child(sub)
-	var first := _btn(v, "New Game", show_presets)
-	var cont := _btn(v, "Continue", func(): continue_game.emit()); cont.disabled = not has_save
+	var first := _btn(v, "Play the Neighborhood — four families, stories in progress", show_households.bind(false))
+	var hc := _btn(v, "Continue Neighborhood", func(): neighborhood_continue.emit()); hc.disabled = not has_hood_save
+	_btn(v, "A Day at Alder Bungalow (new)", show_presets)
+	var cont := _btn(v, "Continue Alder Bungalow", func(): continue_game.emit()); cont.disabled = not has_save
 	_btn(v, "Controls", show_controls.bind(show_title))
 	_btn(v, "Quit", func(): get_tree().quit())
 	first.grab_focus.call_deferred()
@@ -65,6 +74,30 @@ func show_presets() -> void:
 	_btn(v, "Back", show_title)
 	first.grab_focus.call_deferred()
 
+## Household picker. switching=true when called from the pause menu in a running neighborhood.
+func show_households(switching: bool) -> void:
+	_clear(); visible = true
+	var v := _card(820, Control.PRESET_CENTER)
+	v.add_child(UiTheme.title_label("Choose a household" if not switching else "Switch household", 34))
+	var info := Label.new(); info.text = "Every family is mid-story. Your choices change their lives and their neighbours'."; v.add_child(info)
+	var first: Button
+	for hid in Neighborhood.STORY_ORDER:
+		var h: Dictionary = Neighborhood.HOUSEHOLDS[hid]
+		var names := []
+		for p in Neighborhood.PEOPLE: if p[4] == hid: names.append("%s (%s)" % [String(p[1]).get_slice(" ", 0), p[3]])
+		var b := Button.new(); b.custom_minimum_size = Vector2(0, 104); b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.text = "%s  ·  %s\n%s" % [h["name"], ", ".join(names), h["teaser"]]
+		var id: String = hid
+		b.pressed.connect(func(): (switch_household if switching else neighborhood_new).emit(id))
+		v.add_child(b)
+		if first == null: first = b
+	var note := Label.new(); note.add_theme_font_size_override("font_size", 14)
+	note.text = "Coming next: create your own household and move into the empty Willow Lane lot."
+	v.add_child(note)
+	_btn(v, "Back", show_pause if switching else show_title)
+	first.grab_focus.call_deferred()
+
 func show_pause() -> void:
 	_clear(); visible = true
 	var v := _card(380, Control.PRESET_CENTER)
@@ -72,6 +105,9 @@ func show_pause() -> void:
 	var r := _btn(v, "Resume", func(): resume.emit())
 	_btn(v, "Save (%s)" % InputConfig.label("quick_save"), func(): save_requested.emit())
 	_btn(v, "Load (%s)" % InputConfig.label("quick_load"), func(): load_requested.emit())
+	if in_neighborhood:
+		_btn(v, "Switch household", show_households.bind(true))
+		_btn(v, "Inactive households progress: %s" % ("On" if inactive_on else "Off"), func(): toggle_inactive.emit())
 	_btn(v, "Controls", show_controls.bind(show_pause))
 	_btn(v, "Quit to title", func(): quit_to_title.emit())
 	_btn(v, "Quit game", func(): get_tree().quit())

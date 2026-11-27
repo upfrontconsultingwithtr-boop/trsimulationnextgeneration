@@ -156,6 +156,8 @@ func _glb(parent: Node3D, path: String) -> Node3D:
 func _roof() -> void:
 	var xs := []; var zs := []
 	for c in LotLayouts.cells_of(_lay, "#"): xs.append(c.x); zs.append(c.y)
+	roof = Node3D.new(); add_child(roof)
+	if xs.is_empty(): return
 	var x0: float = xs.min() * 0.5 - 0.45; var x1: float = (xs.max() + 1) * 0.5 + 0.45
 	var z0: float = zs.min() * 0.5 - 0.45; var z1: float = (zs.max() + 1) * 0.5 + 0.45
 	var h := 2.2; var y := WALL_H
@@ -165,7 +167,6 @@ func _roof() -> void:
 	for tri in [[a, r0, r1], [a, r1, b], [b, r1, c], [c, r1, r0], [c, r0, d], [d, r0, a], [a, b, c], [a, c, d]]:
 		for v in tri: st.set_uv(Vector2(v.x + v.z, v.y * 1.4)); st.add_vertex(v)
 	st.generate_normals(); st.generate_tangents()
-	roof = Node3D.new(); add_child(roof)
 	var mi := MeshInstance3D.new(); mi.mesh = st.commit(); mi.material_override = Palette.get_mat("roof_tile"); roof.add_child(mi)
 	(mi.material_override as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
 
@@ -173,6 +174,7 @@ func _decor() -> void:
 	var lay := LotLayouts.layout(_lay)
 	# porch arches: 'A' column cells pair up left to right
 	var cols := LotLayouts.cells_of(_lay, "A")
+	if lay["pendants"].is_empty() and cols.is_empty(): pass
 	for i in range(0, cols.size() - 1, 2):
 		var n := Node3D.new(); n.position = (cw(cols[i]) + cw(cols[i + 1])) * 0.5; add_child(n)
 		_glb(n, "res://assets/models/building/porch_arch.glb")

@@ -1,0 +1,130 @@
+{
+  "_doc": "Terrace & Rose premade storylines. Beats fire for the ACTIVE household when day/hour are reached and flag requirements match. Choice effects: funds {household: cents}, rel [[a,b,delta]], set/clear flags, need [[char,need,delta]]. 'ending' marks an arc outcome. Original content.",
+  "beats": [
+    {"id": "rowan_ledger", "household": "rowan", "day": 1, "hour": 9, "title": "The Ledger on the Counter", "speaker": "Delia Rowan",
+     "text": "Under the morning's flour dust, Delia finds the envelope Hazel hid: the mill wants 320.00 by Friday or the deliveries stop. Hazel says nothing and keeps kneading. Theo watches from the stairs.",
+     "choices": [
+       {"label": "Pay the mill now", "cost": 32000, "effects": {"funds": {"rowan": -32000}, "rel": [["delia", "hazel", 5]], "set": ["mill_paid"]}, "result": "Paid. The account balance looks thin, but the ovens stay hot."},
+       {"label": "Ask Hazel to use her retirement savings", "effects": {"rel": [["delia", "hazel", -12]], "set": ["mill_paid", "hazel_savings_used"]}, "result": "Hazel writes the cheque without a word. Her coastal cottage fund just shrank."},
+       {"label": "Pitch the Tidewell Inn a breakfast-supply deal", "effects": {"set": ["pitch_inn"]}, "result": "Delia boxes a dozen rye rolls and heads for the inn. If the Park sisters bite, the mill bill is the least of their worries."}
+     ]},
+    {"id": "rowan_sketchbook", "household": "rowan", "day": 1, "hour": 16, "title": "Theo's Sketchbook", "speaker": "Theo Rowan",
+     "text": "Theo leaves his sketchbook open on the table: the empty back room, painted floor to ceiling, an easel by the window, his name on the door. Delia had pencilled that same room as flour storage for the expansion.",
+     "choices": [
+       {"label": "Clear the room for Theo's studio", "cost": 15000, "effects": {"funds": {"rowan": -15000}, "rel": [["theo", "delia", 18]], "set": ["studio_started"]}, "result": "Theo is up past midnight painting the first wall."},
+       {"label": "Keep it for the bakery expansion", "effects": {"rel": [["theo", "delia", -18]], "set": ["storage_room"]}, "result": "Theo shuts the sketchbook and doesn't come down for dinner."},
+       {"label": "Let Hazel decide", "effects": {"rel": [["hazel", "theo", 10]], "set": ["hazel_mediates"]}, "result": "Hazel taps the sketchbook. \"Half the room, half the dream. You'll both work for it.\""}
+     ]},
+    {"id": "rowan_announcement", "household": "rowan", "day": 2, "hour": 10, "title": "Hazel's Announcement", "speaker": "Hazel Rowan",
+     "text": "Forty-one years of 4 a.m. starts. Hazel takes off her apron and folds it twice. \"I want to watch the tide come in, not the dough rise. I'm retiring this season.\"",
+     "choices": [
+       {"label": "Throw her a farewell bake sale", "effects": {"funds": {"rowan": 40000}, "rel": [["hazel", "delia", 10], ["hazel", "theo", 10]], "set": ["hazel_retiring"]}, "result": "Half the town turns up. Hazel cries into the last tray of cardamom buns. +400.00 in sales."},
+       {"label": "Beg her to stay one more season", "effects": {"rel": [["hazel", "delia", -8]], "set": ["hazel_stays"]}, "result": "She agrees. But she starts leaving brochures for coastal cottages on the counter."},
+       {"label": "Offer a part-time 'Head of Tasting' role", "requires": ["hazel_mediates"], "effects": {"rel": [["hazel", "delia", 12]], "set": ["hazel_parttime"]}, "result": "Hazel laughs for the first time in weeks. Mornings off, final say on every recipe."}
+     ]},
+    {"id": "rowan_loan", "household": "rowan", "day": 3, "hour": 9, "title": "The Expansion Loan", "speaker": "Delia Rowan",
+     "text": "The bank will lend 3,000.00 for a café counter and six tables, repaid from future sales. Lucia Alvarez also stopped by with an idea: flowers and bread under one roof.",
+     "choices": [
+       {"label": "Take the bank loan", "effects": {"funds": {"rowan": 300000}, "set": ["rowan_loan"]}, "result": "The money lands. So does the first repayment notice."},
+       {"label": "Partner with the Alvarez flower stall", "requires": ["alvarez_open_to_partners"], "effects": {"rel": [["delia", "lucia", 15]], "set": ["rose_and_rye"]}, "result": "Rose & Rye: a florist café is born on paper. The town is already talking."},
+       {"label": "Stay small and safe", "effects": {"rel": [["hazel", "delia", 6]], "set": ["rowan_small"]}, "result": "No new counter. No new debt. Delia isn't sure if she's relieved."}
+     ]},
+    {"id": "rowan_end_cafe", "household": "rowan", "day": 4, "hour": 8, "title": "Opening Morning: Rose & Rye", "ending": true, "requires_any": ["rose_and_rye"],
+     "text": "Bread on the left, peonies on the right, a line out the door. Theo's mural greets every customer. Rose & Rye is open, and the Rowan story has a new chapter.",
+     "choices": [{"label": "Unlock the door", "effects": {"set": ["rowan_arc_done", "ending_rose_and_rye"]}, "result": "Ending reached: Rose & Rye."}]},
+    {"id": "rowan_end_expand", "household": "rowan", "day": 4, "hour": 8, "title": "Opening Morning: The Bigger Bakery", "ending": true, "requires_any": ["rowan_loan"], "excludes": ["rose_and_rye"],
+     "text": "Six new tables, a gleaming counter, and a repayment schedule taped inside the till. Delia got her expansion. Now she has to earn it.",
+     "choices": [{"label": "Start the first shift", "effects": {"set": ["rowan_arc_done", "ending_expansion"]}, "result": "Ending reached: The Bigger Bakery."}]},
+    {"id": "rowan_end_small", "household": "rowan", "day": 4, "hour": 8, "title": "Opening Morning: Same Ovens, New Light", "ending": true, "requires_any": ["rowan_small"],
+     "text": "Nothing changed but the light through the window. Hazel hums, Delia counts the till, and somewhere upstairs Theo is painting something nobody has seen yet.",
+     "choices": [{"label": "Bake as usual", "effects": {"set": ["rowan_arc_done", "ending_small"]}, "result": "Ending reached: Same Ovens, New Light."}]},
+
+    {"id": "park_will", "household": "park", "day": 1, "hour": 11, "title": "Two Signatures", "speaker": "June Park",
+     "text": "Their aunt left the Tidewell Inn to both of them: leaking roof, loyal regulars, and one sticky key. June wants to restore it. Iris has a developer's offer of 6,000.00 and a one-way ticket.",
+     "choices": [
+       {"label": "Run it together for one season", "effects": {"rel": [["june", "iris", 8]], "set": ["inn_together"]}, "result": "Iris sighs, rolls up her sleeves, and changes the sign to OPEN."},
+       {"label": "June buys out Iris's half", "cost": 250000, "effects": {"funds": {"park": -250000}, "rel": [["june", "iris", -6]], "set": ["inn_buyout"]}, "result": "Iris takes the money and a long hug. June owns the Tidewell, every creaky board of it."},
+       {"label": "Sell to the developer and start over", "effects": {"funds": {"park": 600000}, "rel": [["june", "iris", -20]], "set": ["inn_sold", "park_arc_done", "ending_sold"]}, "result": "Ending reached: the Tidewell is sold. The sisters have money, and a silence between them."}
+     ]},
+    {"id": "park_baker", "household": "park", "day": 1, "hour": 15, "title": "A Baker at the Door", "requires": ["pitch_inn"], "excludes": ["inn_sold"], "speaker": "Delia Rowan",
+     "text": "Delia Rowan is on the porch with warm rye rolls and a proposal: fresh breakfast for every guest, delivered at six, for a fair weekly price.",
+     "choices": [
+       {"label": "Shake on it", "effects": {"funds": {"park": -6000, "rowan": 6000}, "rel": [["june", "delia", 15], ["iris", "delia", 8]], "set": ["bakery_supplies_inn", "mill_paid"]}, "result": "The inn's breakfasts just got famous. The Rowans' mill bill just got paid."},
+       {"label": "Politely decline", "effects": {"rel": [["june", "delia", -5]]}, "result": "Delia leaves the rolls anyway. Iris eats three."}
+     ]},
+    {"id": "park_roof", "household": "park", "day": 2, "hour": 9, "title": "The Roof Has Opinions", "excludes": ["inn_sold"], "speaker": "Iris Park",
+     "text": "Overnight rain found the guest room ceiling. A roofer quotes 600.00 to fix it properly, or 100.00 for a patch that 'should hold'.",
+     "choices": [
+       {"label": "Fix it properly", "cost": 60000, "effects": {"funds": {"park": -60000}, "set": ["roof_fixed"]}, "result": "Dry ceilings. Empty wallet."},
+       {"label": "Patch it", "cost": 10000, "effects": {"funds": {"park": -10000}, "set": ["roof_patched"]}, "result": "It holds. For now."}
+     ]},
+    {"id": "park_flowers", "household": "park", "day": 2, "hour": 14, "title": "Flowers for the Lobby", "requires": ["alvarez_decorates_inn"], "excludes": ["inn_sold"], "speaker": "Lucia Alvarez",
+     "text": "Lucia arrives with armfuls of sea lavender and dahlias. The lobby looks like a postcard. Iris quietly takes a photo for the website.",
+     "choices": [{"label": "Pay for the arrangements", "effects": {"funds": {"park": -9000, "alvarez": 9000}, "rel": [["iris", "lucia", 12]], "set": ["inn_flowers"]}, "result": "The first booking request arrives within the hour."}]},
+    {"id": "park_end_review", "household": "park", "day": 3, "hour": 17, "title": "The First Review", "ending": true, "excludes": ["inn_sold"],
+     "text": "A travel writer stayed last night. The review is out. June reads it aloud while Iris pretends not to listen.",
+     "choices": [
+       {"label": "Read the review", "effects": {"set": ["park_arc_done"], "score": {"flags": ["bakery_supplies_inn", "inn_flowers", "roof_fixed"], "good": "ending_inn_thrives", "bad": "ending_inn_struggles"}}, "result": "The review decides whether Iris stays."}
+     ]},
+
+    {"id": "bell_ideas", "household": "bell", "day": 1, "hour": 12, "title": "Four Ideas of Fun", "speaker": "Renee Bell",
+     "text": "First family trip. Marcus wants a lakeside campsite. Renee wants museums and good coffee. Avery wants the beach. Sol, fifteen, would rather stay home with friends than 'bond'.",
+     "choices": [
+       {"label": "Brineglass Harbor: beach and boardwalk", "effects": {"rel": [["avery", "marcus", 10], ["renee", "marcus", 3]], "set": ["trip_harbor"]}, "result": "Avery runs to pack a bucket and spade."},
+       {"label": "Camping by the lake", "effects": {"rel": [["marcus", "sol", -6], ["marcus", "avery", 6]], "set": ["trip_camping"]}, "result": "Marcus is thrilled. Sol asks if there's Wi-Fi. There isn't."},
+       {"label": "City weekend with museums", "effects": {"rel": [["renee", "sol", 8], ["avery", "renee", -4]], "set": ["trip_city"]}, "result": "Sol shrugs, which from Sol is basically a yes."}
+     ]},
+    {"id": "bell_budget", "household": "bell", "day": 1, "hour": 19, "title": "The Budget Talk", "speaker": "Marcus Bell",
+     "text": "Laptop open, receipts out. A cabin, a nice lodge, or the splurge everyone will remember?",
+     "choices": [
+       {"label": "Cosy cabin (300.00)", "cost": 30000, "effects": {"funds": {"bell": -30000}, "set": ["trip_budget"]}, "result": "Booked. Bunk beds included."},
+       {"label": "Cedar lodge (800.00)", "cost": 80000, "effects": {"funds": {"bell": -80000}, "set": ["trip_comfort"]}, "result": "Booked. There's a fireplace."},
+       {"label": "Splurge (1,500.00)", "cost": 150000, "effects": {"funds": {"bell": -150000}, "set": ["trip_splurge"], "rel": [["renee", "marcus", -4]]}, "result": "Booked. Renee quietly checks the savings balance twice."}
+     ]},
+    {"id": "bell_sol", "household": "bell", "day": 2, "hour": 18, "title": "Sol Won't Go", "speaker": "Sol Bell",
+     "text": "Sol's bag is still empty. \"You two are married, not me. I didn't sign up for a new family AND a road trip.\"",
+     "choices": [
+       {"label": "Insist — it's a family trip", "effects": {"rel": [["sol", "marcus", -10], ["sol", "renee", -6]], "set": ["sol_forced"]}, "result": "Sol gets in the car. Headphones in. Window down."},
+       {"label": "Let Sol bring a friend (+100.00)", "cost": 10000, "effects": {"funds": {"bell": -10000}, "rel": [["sol", "marcus", 10], ["sol", "renee", 6]], "set": ["sol_friend"]}, "result": "Sol actually smiles. Twice."},
+       {"label": "Sol stays with Hazel Rowan", "effects": {"rel": [["sol", "hazel", 12], ["sol", "marcus", 2]], "set": ["sol_at_rowans"]}, "result": "Hazel puts Sol to work kneading. Sol pretends to hate it."}
+     ]},
+    {"id": "bell_end_trip", "household": "bell", "day": 3, "hour": 20, "title": "Postcards Home", "ending": true,
+     "text": "The trip is over. Sunburns, inside jokes, one argument in a petrol station. Everyone is home. (Played as a story beat until Vacations ships; booking and travel come with that milestone.)",
+     "choices": [
+       {"label": "Look through the photos", "effects": {"set": ["bell_arc_done"], "score": {"flags": ["sol_friend", "trip_harbor", "trip_comfort"], "good": "ending_trip_closer", "bad": "ending_trip_tension"}}, "result": "The photos tell you how the family really feels."}
+     ]},
+
+    {"id": "alvarez_stall", "household": "alvarez", "day": 1, "hour": 9, "title": "Saturday at the Stall", "speaker": "Noor Haddad",
+     "text": "Petal & Pine sold out by noon again. Noor, Lucia's oldest friend, slides a cheque across the folding table: 2,000.00 for forty percent, and she has ideas. Neon ideas.",
+     "choices": [
+       {"label": "Accept Noor's offer", "effects": {"funds": {"alvarez": 200000}, "rel": [["noor", "lucia", 10]], "set": ["noor_partner", "alvarez_open_to_partners"]}, "result": "Partners. Noor is already sketching a sign."},
+       {"label": "Counter: 1,000.00 for twenty percent", "effects": {"funds": {"alvarez": 100000}, "rel": [["noor", "lucia", 4], ["noor", "gabriel", -4]], "set": ["noor_partner_small", "alvarez_open_to_partners"]}, "result": "Noor laughs. \"You learned that from me.\" Deal."},
+       {"label": "Keep it just the two of you", "effects": {"rel": [["noor", "lucia", -10], ["gabriel", "lucia", 6]], "set": ["alvarez_independent"]}, "result": "Noor tucks the cheque away. The friendship has a new crease in it."}
+     ]},
+    {"id": "alvarez_nursery", "household": "alvarez", "day": 1, "hour": 21, "title": "The Nursery Question", "speaker": "Gabriel Alvarez",
+     "text": "Late, on the patio, among the unsold tulips. Gabriel asks the question they've both been circling: now, or when the shop is steady?",
+     "choices": [
+       {"label": "Start trying for a baby", "effects": {"rel": [["gabriel", "lucia", 10]], "set": ["try_baby"]}, "result": "They stay out until the stars come up. (Pregnancy arrives with the Family Life update.)"},
+       {"label": "Wait until the shop is steady", "effects": {"rel": [["gabriel", "lucia", 2]], "set": ["wait_baby"]}, "result": "A promise to revisit it at the first anniversary."},
+       {"label": "Talk about adoption", "effects": {"rel": [["gabriel", "lucia", 8]], "set": ["adopt_interest"]}, "result": "Lucia brings out the folder she'd been too nervous to show him."}
+     ]},
+    {"id": "alvarez_inn_order", "household": "alvarez", "day": 2, "hour": 10, "title": "The Inn Order", "requires": ["inn_together"], "speaker": "June Park",
+     "text": "June Park wants the Tidewell lobby full of flowers before the travel writer arrives. A big order, small deadline.",
+     "choices": [
+       {"label": "Take the order", "effects": {"rel": [["lucia", "june", 10]], "set": ["alvarez_decorates_inn"]}, "result": "Lucia is at the market at dawn."},
+       {"label": "Too busy this week", "effects": {"rel": [["lucia", "june", -4]]}, "result": "June understands. Mostly."}
+     ]},
+    {"id": "alvarez_rebrand", "household": "alvarez", "day": 3, "hour": 11, "title": "Noor's Rebrand", "requires_any": ["noor_partner", "noor_partner_small"], "speaker": "Noor Haddad",
+     "text": "Noor unveils the mock-up: hot-pink neon, 'PETAL & PINE' in letters you can see from the harbor. Gabriel's grandmother's hand-painted sign sits in the corner.",
+     "choices": [
+       {"label": "Go neon", "cost": 25000, "effects": {"funds": {"alvarez": -25000}, "rel": [["noor", "lucia", 10], ["gabriel", "noor", -10]], "set": ["neon_sign"]}, "result": "It's loud. Teenagers take selfies with it. Sales tick up."},
+       {"label": "Restore the hand-painted sign", "cost": 8000, "effects": {"funds": {"alvarez": -8000}, "rel": [["gabriel", "lucia", 8], ["noor", "lucia", -8]], "set": ["heritage_sign"]}, "result": "Gabriel repaints his grandmother's roses himself."},
+       {"label": "Both: neon inside, heritage outside", "cost": 33000, "effects": {"funds": {"alvarez": -33000}, "rel": [["noor", "gabriel", 6]], "set": ["neon_sign", "heritage_sign"]}, "result": "Everyone wins except the bank balance."}
+     ]},
+    {"id": "alvarez_end", "household": "alvarez", "day": 4, "hour": 18, "title": "One Year at Petal & Pine", "ending": true,
+     "text": "The stall became a shop. The shop is becoming something else. Lucia and Gabriel lock up together while Noor counts the till.",
+     "choices": [
+       {"label": "Look back on the year", "effects": {"set": ["alvarez_arc_done"], "score": {"flags": ["alvarez_decorates_inn", "heritage_sign", "noor_partner_small"], "good": "ending_shop_blooms", "bad": "ending_shop_strained"}}, "result": "Where Petal & Pine goes next depends on what you chose."}
+     ]}
+  ]
+}

@@ -27,12 +27,15 @@ static func decode(text: String) -> Dictionary:
 	if j.parse(text) != OK: return {"ok": false, "error": "not valid JSON (line %d)" % j.get_error_line()}
 	var d: Variant = GameState.normalize(j.data)
 	if typeof(d) != TYPE_DICTIONARY or d.get("format") != FORMAT: return {"ok": false, "error": "not a Terrace & Rose save"}
-	if int(d.get("version", -1)) != GameState.VERSION: return {"ok": false, "error": "unsupported save version %s" % d.get("version")}
+	var ver := int(d.get("version", -1))
+	if ver < 1 or ver > GameState.VERSION: return {"ok": false, "error": "unsupported save version %s" % d.get("version")}
 	var s: Variant = d.get("state")
+	if typeof(s) != TYPE_DICTIONARY: return {"ok": false, "error": "state missing"}
+	if GameState.checksum(s) != d.get("checksum"): return {"ok": false, "error": "checksum mismatch (file damaged)"}
+	s = GameState.migrate(s)   # older saves are upgraded, never discarded
 	var errs := GameState.validate(s)
 	if not errs.is_empty(): return {"ok": false, "error": "; ".join(errs)}
-	if GameState.checksum(s) != d.get("checksum"): return {"ok": false, "error": "checksum mismatch (file damaged)"}
-	return {"ok": true, "state": s, "error": ""}
+	return {"ok": true, "state": s, "error": "", "migrated_from": ver}
 
 func _read(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path): return {"ok": false, "error": "no file"}

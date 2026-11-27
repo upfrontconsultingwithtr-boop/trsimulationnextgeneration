@@ -48,6 +48,27 @@ func quick() -> void:
 	await shot("q3_furnish")
 	m.get_tree().quit(0)
 
+func hood() -> void:
+	await wait(3)
+	m.menus.show_households(false); await wait(4)
+	await shot("h1_household_picker")
+	m.start_neighborhood("rowan"); await wait(4)
+	await until(func(): return m.story_open, 120)
+	await wait(4)
+	check(m.story_open, "story dialog opens for the Rowans")
+	await shot("h2_story_rowan")
+	m._on_story_choice("rowan_ledger", 2); await wait(4)
+	await shot("h3_story_result")
+	m.hud.hide_story(); m.story_open = false; m.sim.set_speed(1)
+	m.rig.focus(m.world.house_center, 20.0); await wait(8)
+	await shot("h4_rowan_bakery")
+	for hid in ["park", "bell", "alvarez"]:
+		m._switch_household(hid); m.sim.state["story"]["pending"].clear(); m.story_open = false; m.hud.hide_story()
+		m.rig.focus(m.world.house_center, 20.0); await wait(8)
+		await shot("h5_" + hid)
+	print("HOOD: %d failures" % fails.size())
+	m.get_tree().quit(0 if fails.is_empty() else 1)
+
 func run() -> void:
 	print("SMOKE start")
 	for i in 6:

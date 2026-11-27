@@ -2,6 +2,9 @@ extends Node3D
 ## Glue between simulation (state), WorldView (3D), Hud/Menus (UI), input and audio.
 
 const SLOT := "household1"
+const HOOD_SLOT := "neighborhood"
+var story_open := false
+var _speed_before := 1
 var sim: Simulation
 var furn: Furnishing
 var saves := SaveSystem.new()
@@ -30,7 +33,7 @@ var smoke_runner: RefCounted   # keep a reference so the coroutine survives its 
 func _ready() -> void:
 	InputConfig.apply()
 	var args := OS.get_cmdline_user_args()
-	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots")
+	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots") or args.has("--hood")
 	var ui := CanvasLayer.new(); add_child(ui)
 	var root := Control.new(); root.theme = UiTheme.make(); root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); root.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(root)
 	hud = Hud.new(); root.add_child(hud); hud.visible = false
@@ -44,12 +47,14 @@ func _ready() -> void:
 	_audio()
 	_wire_ui()
 	menus.has_save = saves.has_save(SLOT)
+	menus.has_hood_save = saves.has_save(HOOD_SLOT)
 	_show_title_scene("mara")
 	menus.show_title()
-	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots")
+	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--hood")
 	if smoke:
 		smoke_runner = SmokeTest.new(self)
-		if OS.get_cmdline_user_args().has("--shots"): smoke_runner.quick()
+		if OS.get_cmdline_user_args().has("--hood"): smoke_runner.hood()
+		elif OS.get_cmdline_user_args().has("--shots"): smoke_runner.quick()
 		else: smoke_runner.run()
 
 func _audio() -> void:
@@ -79,8 +84,13 @@ func _wire_ui() -> void:
 	menus.preset_highlight.connect(func(p): _show_title_scene(p))
 	menus.resume.connect(func(): menus.visible = false; hud.visible = true)
 	menus.save_requested.connect(save_game)
-	menus.load_requested.connect(func(): load_game(); menus.visible = false)
-	menus.quit_to_title.connect(func(): playing = false; hud.visible = false; menus.has_save = saves.has_save(SLOT); _show_title_scene("mara"); menus.show_title())
+	menus.load_requested.connect(func(): load_game(_slot()); menus.visible = false)
+	menus.neighborhood_new.connect(start_neighborhood)
+	menus.neighborhood_continue.connect(func(): load_game(HOOD_SLOT))
+	menus.switch_household.connect(_switch_household)
+	menus.toggle_inactive.connect(func(): sim.state["settings"]["inactive_progress"] = not bool(sim.state["settings"]["inactive_progress"]); menus.inactive_on = sim.state["settings"]["inactive_progress"]; menus.show_pause())
+	hud.story_choice.connect(_on_story_choice)
+	menus.quit_to_title.connect(func(): playing = false; hud.visible = false; menus.has_save = saves.has_save(SLOT); menus.has_hood_save = saves.has_save(HOOD_SLOT); _show_title_scene("mara"); menus.show_title())
 
 # ------------------------------------------------------------------ scenes
 func _show_title_scene(highlight: String) -> void:
@@ -113,15 +123,49 @@ func _begin(s: Simulation) -> void:
 	rig.input_enabled = true; rig.auto_orbit = 0.0; rig.dist = 17.0; rig.pitch = deg_to_rad(-45); rig.yaw = deg_to_rad(30)
 	rig.focus(world.house_center + Vector3(0, 0, 1.5))
 	focus_list.clear(); focus_idx = -1; focus_marker.visible = false
+	menus.in_neighborhood = String(sim.state.get("world", "")) == "neighborhood"
+	menus.inactive_on = bool(sim.state.get("settings", {}).get("inactive_progress", true))
+	story_open = false; hud.hide_story()
 	play("chime_done")
 
+func start_neighborhood(hid: String) -> void:
+	var s := Neighborhood.build()
+	Neighborhood.switch_to(s, hid)
+	_begin(Simulation.new(s))
+	hud.push_log("info", "Welcome to Terrace & Rose. You're playing %s." % s["households"][hid]["name"])
+
+func _switch_household(hid: String) -> void:
+	var r := Neighborhood.switch_to(sim.state, hid)
+	if not r["ok"]: hud.push_log("error", r["reason"]); return
+	_begin(sim)
+	hud.push_log("info", "Now playing %s." % sim.household()["name"])
+
+func _slot() -> String: return HOOD_SLOT if String(sim.state.get("world", "alder")) == "neighborhood" else SLOT
+
+func _open_story_if_pending() -> void:
+	if story_open or sim.state["story"]["pending"].is_empty() or furnishing: return
+	story_open = true
+	_speed_before = maxi(1, int(sim.state["speed"])); sim.set_speed(0)
+	hud.show_story(sim.state, sim.state["story"]["pending"][0])
+
+func _on_story_choice(beat_id: String, idx: int) -> void:
+	var title: String = StoryEngine.beat(beat_id)["title"]
+	var r := StoryEngine.choose(sim.state, beat_id, idx)
+	if not r["ok"]: hud.push_log("error", r["text"]); play("ui_error"); return
+	play("chime_done")
+	hud.show_story_result(title, r["text"], func():
+		hud.hide_story(); story_open = false
+		if sim.state["story"]["pending"].is_empty(): sim.set_speed(_speed_before)
+		else: _open_story_if_pending())
+
 func save_game() -> void:
-	var r := saves.save(SLOT, sim.state)
+	var r := saves.save(_slot(), sim.state)
 	hud.push_log("save" if r["ok"] else "error", "Game saved." if r["ok"] else "Save failed: %s" % r["error"])
 	play("chime_done" if r["ok"] else "ui_error")
 
-func load_game() -> void:
-	var r := saves.load_game(SLOT)
+func load_game(slot: String = SLOT) -> void:
+	if playing and slot == SLOT: slot = _slot()
+	var r := saves.load_game(slot)
 	if not r["ok"]:
 		hud.push_log("error", r["error"]); play("ui_error")
 		if not playing: menus.show_title()
@@ -145,6 +189,7 @@ func _process(delta: float) -> void:
 			hud.push_log(e["kind"], e["text"])
 			play({"done": "chime_done", "error": "ui_error", "arrive": "knock"}.get(e["kind"], "ui_click"))
 		sim.events.clear()
+		_open_story_if_pending()
 		hud.refresh(sim, furnishing, world.wall_mode, _focus_text())
 		var cooking: bool = sim.controlled()["anim"] == "cook" and sim.controlled()["current"].get("phase", "") == "perform"
 		if cooking and not sfx["sizzle"].playing: sfx["sizzle"].play()
@@ -158,6 +203,7 @@ func _process(delta: float) -> void:
 
 # ------------------------------------------------------------------ input
 func _unhandled_input(e: InputEvent) -> void:
+	if story_open: return
 	if not playing or menus.visible: 
 		if playing and e.is_action_pressed("menu"): menus.visible = false; hud.visible = true
 		return
@@ -171,7 +217,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e.is_action_pressed("toggle_walls"): world.wall_mode = (world.wall_mode + 1) % 3
 	elif e.is_action_pressed("cam_reset"): rig.focus(world.house_center)
 	elif e.is_action_pressed("quick_save"): save_game()
-	elif e.is_action_pressed("quick_load"): load_game()
+	elif e.is_action_pressed("quick_load"): load_game(_slot())
 	elif e.is_action_pressed("furnish_toggle"): _toggle_furnish()
 	elif furnishing: _furnish_input(e)
 	else: _live_input(e)

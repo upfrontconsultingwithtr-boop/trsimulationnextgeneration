@@ -11,6 +11,7 @@ signal catalog_pressed(item: String)
 signal undo_pressed
 signal redo_pressed
 signal menu_pressed
+signal story_choice(beat_id: String, idx: int)
 
 var clock: Label
 var funds: Label
@@ -26,6 +27,9 @@ var furnish_status: Label
 var walls_btn: Button
 var holding_label: Label
 var cat_btns := {}
+var story_layer: CenterContainer
+var household_label: Label
+var family_label: Label
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -44,6 +48,7 @@ func _ready() -> void:
 	_spacer(top_row)
 	# top-right: funds, mode, walls, menu
 	var trv := HBoxContainer.new(); trv.add_theme_constant_override("separation", 12); _panel(top_row).add_child(trv)
+	household_label = Label.new(); trv.add_child(household_label)
 	funds = UiTheme.title_label("Funds 600.00", 24); trv.add_child(funds)
 	mode_label = Label.new(); trv.add_child(mode_label)
 	walls_btn = Button.new(); walls_btn.focus_mode = Control.FOCUS_NONE; walls_btn.pressed.connect(func(): walls_pressed.emit()); trv.add_child(walls_btn)
@@ -57,6 +62,7 @@ func _ready() -> void:
 		var bar := ProgressBar.new(); bar.max_value = 100; bar.show_percentage = false; bar.custom_minimum_size = Vector2(270, 14); row.add_child(bar)
 		need_rows[k] = [lab, bar]
 	holding_label = Label.new(); nv.add_child(holding_label)
+	family_label = Label.new(); family_label.add_theme_font_size_override("font_size", 14); family_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; family_label.custom_minimum_size.x = 270; nv.add_child(family_label)
 	_spacer(mid_row)
 	# middle-right: queue (top) and feedback log (bottom)
 	var right := VBoxContainer.new(); right.mouse_filter = Control.MOUSE_FILTER_IGNORE; right.add_theme_constant_override("separation", 10); mid_row.add_child(right)
@@ -94,6 +100,48 @@ func _ready() -> void:
 	help.text = "Click or %s place · %s rotate · %s sell hovered · %s/%s/%s/%s nudge" % [InputConfig.label("interact"), InputConfig.label("furnish_rotate"), InputConfig.label("furnish_sell"), InputConfig.label("furnish_nudge_up"), InputConfig.label("furnish_nudge_left"), InputConfig.label("furnish_nudge_down"), InputConfig.label("furnish_nudge_right")]
 	fv.add_child(help)
 	furnish_panel.visible = false
+	story_layer = CenterContainer.new(); story_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); story_layer.visible = false
+	add_child(story_layer)
+
+## Story moment: title, speaker, text and choices (locked/unaffordable choices show why). Number keys work.
+func show_story(s: Dictionary, beat_id: String) -> void:
+	for c in story_layer.get_children(): c.queue_free()
+	var b := StoryEngine.beat(beat_id)
+	var p := PanelContainer.new(); story_layer.add_child(p)
+	var v := VBoxContainer.new(); v.custom_minimum_size.x = 640; v.add_theme_constant_override("separation", 10); p.add_child(v)
+	var tag := Label.new(); tag.text = "%s · Day %d" % [s["households"][b["household"]]["name"], int(s["minute"]) / 1440 + 1]
+	tag.add_theme_color_override("font_color", Palette.TERRACOTTA); v.add_child(tag)
+	v.add_child(UiTheme.title_label(b["title"], 30))
+	if b.has("speaker"):
+		var sp := Label.new(); sp.text = b["speaker"]; sp.add_theme_color_override("font_color", Palette.TEAL_DEEP); v.add_child(sp)
+	var t := Label.new(); t.text = b["text"]; t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; t.custom_minimum_size.x = 620; v.add_child(t)
+	var first: Button
+	for i in b["choices"].size():
+		var ch: Dictionary = b["choices"][i]
+		var st := StoryEngine.choice_status(s, b, i)
+		var btn := Button.new(); btn.custom_minimum_size.y = 46; btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var cost := int(ch.get("cost", 0))
+		btn.text = "%d. %s%s%s" % [i + 1, ch["label"], ("  (%s)" % Catalog.format_cents(cost)) if cost > 0 else "", "" if st["ok"] else "  — " + st["reason"]]
+		btn.disabled = not st["ok"]
+		var idx: int = i
+		btn.pressed.connect(func(): story_choice.emit(beat_id, idx))
+		v.add_child(btn)
+		if first == null and st["ok"]: first = btn
+	story_layer.visible = true
+	if first: first.grab_focus.call_deferred()
+
+func show_story_result(title: String, text: String, on_close: Callable) -> void:
+	for c in story_layer.get_children(): c.queue_free()
+	var p := PanelContainer.new(); story_layer.add_child(p)
+	var v := VBoxContainer.new(); v.custom_minimum_size.x = 600; p.add_child(v)
+	v.add_child(UiTheme.title_label(title, 26))
+	var t := Label.new(); t.text = text; t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; t.custom_minimum_size.x = 580; v.add_child(t)
+	var ok := Button.new(); ok.text = "Continue"; ok.custom_minimum_size.y = 44; ok.pressed.connect(on_close); v.add_child(ok)
+	story_layer.visible = true
+	ok.grab_focus.call_deferred()
+
+func hide_story() -> void:
+	story_layer.visible = false
 
 func _row(parent: Node, expand: bool = false) -> HBoxContainer:
 	var h := HBoxContainer.new(); h.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -116,6 +164,14 @@ func refresh(sim: Simulation, furnishing_mode: bool, wall_mode: int, focus_text:
 		speed_btns[i].button_pressed = i == sp
 		speed_btns[i].text = "%s%s (%s)" % ["● " if i == sp else "", names[i], InputConfig.label(keys[i])]
 	funds.text = "Funds %s" % Catalog.format_cents(sim.funds())
+	household_label.text = String(sim.household()["name"])
+	var fam := []
+	for t in sim.state.get("family", []):
+		if t["a"] == me["id"] or t["b"] == me["id"]:
+			var other: String = t["b"] if t["a"] == me["id"] else t["a"]
+			var rel: Dictionary = sim.state["relationships"].get(GameState.rel_key(me["id"], other), {})
+			fam.append("%s %s (%s, friendship %d)" % [_tie_word(t, me["id"]), sim.character(other).get("name", other).get_slice(" ", 0), String(sim.character(other).get("age", "")), int(rel.get("friendship", 0))])
+	family_label.text = ("Family & friends:\n" + "\n".join(fam)) if not fam.is_empty() else ""
 	mode_label.text = "Furnish mode" if furnishing_mode else ("Paused" if sp == 0 else "Live mode")
 	walls_btn.text = "Walls: %s (%s)" % [["Up", "Cutaway", "Down"][wall_mode], InputConfig.label("toggle_walls")]
 	for k in GameState.NEED_KEYS:
@@ -130,6 +186,12 @@ func refresh(sim: Simulation, furnishing_mode: bool, wall_mode: int, focus_text:
 	action_bar.visible = not furnishing_mode
 	furnish_panel.visible = furnishing_mode
 	_refresh_queue(me)
+
+func _tie_word(t: Dictionary, me: String) -> String:
+	var forward: bool = t["a"] == me
+	return {"parent_of": "Child" if forward else "Parent", "grandparent_of": "Grandchild" if forward else "Grandparent",
+		"stepparent_of": "Stepchild" if forward else "Stepparent", "spouse": "Spouse", "sibling": "Sibling", "step_sibling": "Step-sibling",
+		"friend": "Friend", "partner": "Partner", "roommate": "Roommate"}.get(t["type"], t["type"])
 
 func _refresh_queue(me: Dictionary) -> void:
 	for c in queue_box.get_children(): c.queue_free()

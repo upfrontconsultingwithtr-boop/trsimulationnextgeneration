@@ -149,10 +149,14 @@ func on_furniture_removed(lid: String, fid: String) -> void:
 	rebuild_nav(lid)
 
 # ------------------------------------------------------------------ ticking
+func _frozen(c: Dictionary) -> bool:
+	# inactive households pause when the player turns "inactive households progress" off
+	return not bool(state.get("settings", {}).get("inactive_progress", true)) and c["lot"] != state["active_lot"]
+
 func tick() -> void:
 	for cid in state["characters"]:
 		var c: Dictionary = state["characters"][cid]
-		if c["lot"] == "": continue
+		if c["lot"] == "" or _frozen(c): continue
 		_step_character(c)
 	state["subtick"] = int(state["subtick"]) + 1
 	if int(state["subtick"]) >= GameState.TICKS_PER_MINUTE:
@@ -169,9 +173,12 @@ func _on_minute() -> void:
 		if not ev["fired"] and m >= int(ev["at"]):
 			ev["fired"] = true
 			_fire(ev)
+	if state.has("story"):
+		for bid in StoryEngine.check(state):
+			_emit("story", StoryEngine.beat(bid)["title"], bid)
 	for cid in state["characters"]:
 		var c: Dictionary = state["characters"][cid]
-		if c["lot"] == "": continue
+		if c["lot"] == "" or _frozen(c): continue
 		var cur: Dictionary = c["current"]
 		var doing := String(cur.get("type", "")) if cur.get("phase", "") == "perform" else ""
 		for k in GameState.NEED_KEYS:
@@ -180,7 +187,9 @@ func _on_minute() -> void:
 			if k == "comfort" and (c["pose"] == "sit" or c["pose"] == "lie"): d = 0
 			_need(c, k, -d)
 		if doing != "": _perform_minute(c, cur)
-		if c["ai"] == "visitor" and c["current"].is_empty() and c["queue"].is_empty() and m >= int(c["ai_next"]): _visitor_ai(c)
+		if c["current"].is_empty() and c["queue"].is_empty() and m >= int(c["ai_next"]):
+			if c["ai"] == "visitor": _visitor_ai(c)
+			elif c["ai"] == "auto": _auto_ai(c)
 
 func _need(c: Dictionary, k: String, d: int) -> void:
 	c["needs"][k] = clampi(int(c["needs"][k]) + d, 0, GameState.NEED_MAX)
@@ -416,6 +425,20 @@ func _fire(ev: Dictionary) -> void:
 			c["leaving"] = true
 			var gates := LotLayouts.cells_of(layout_id(c["lot"]), "G")
 			queue_action(c["id"], "walk", "", gates[0])
+
+## Simple needs-driven autonomy for everyone the player isn't controlling.
+func _auto_ai(c: Dictionary) -> void:
+	c["ai_next"] = minute() + 20
+	var n: Dictionary = c["needs"]
+	var cid: String = c["id"]
+	if c["holding"] == "meal": queue_action(cid, "eat"); return
+	if int(n["energy"]) < 2500: queue_action(cid, "sleep"); return
+	if int(n["hunger"]) < 4000 and c["age"] != "child": queue_action(cid, "prepare_meal"); return
+	if int(n["social"]) < 4500:
+		for o in chars_on(c["lot"]):
+			if o["id"] != cid and o["pose"] == "stand": queue_action(cid, "greet", o["id"]); return
+	if int(n["comfort"]) < 5000: queue_action(cid, "sit"); return
+	c["ai_next"] = minute() + 45
 
 func _visitor_ai(c: Dictionary) -> void:
 	c["ai_next"] = minute() + 45
