@@ -3,8 +3,10 @@
 An original 3D life simulation built with **Godot 4.5 (stable)**, **typed GDScript** and **Blender 4.2 LTS**.
 It is offline and desktop-first, uses local saves, and costs $0 to develop: no paid tools, plugins, assets or services.
 
-**Milestone 1 — A Day at Alder Bungalow** (this build): pick an avatar preset, live one day in a furnished
+**A Day at Alder Bungalow:** pick an avatar preset, live one day in a furnished
 16 × 16 m bungalow, cook and eat, greet the neighbor who visits at 10:00, sit, sleep, and furnish the home with undo/redo.
+
+The planned desktop release is a single adult-only explicit edition. Intimacy fades to black in this development build.
 
 ## Download (Windows / Linux)
 Every push builds the game automatically. Open the GitHub repository and go to **Actions**, then **Terrace & Rose desktop builds**.
@@ -21,10 +23,11 @@ Windows may show a SmartScreen warning because the build isn't code-signed (sign
 ```bash
 godot --headless --path . --import                  # first time only: builds the class cache (see note)
 godot --headless --path . -s tests/lint.gd          # every script parses and type-checks
-godot --headless --path . -s tests/run_tests.gd     # Milestone-1 regression suite (69 checks)
-godot --headless --path . -s tests/genetics_tests.gd       # child DNA (6 checks)
+godot --headless --path . -s tests/run_tests.gd     # core regression suite, including construction and snapshots
+godot --headless --path . -s tests/genetics_tests.gd       # child DNA
 godot --headless --path . -s tests/neighborhood_tests.gd   # 4 households, stories, switching, migration (34 checks)
 godot --headless --path . -s tests/family_tests.gd         # creator, ties, adoption, pregnancy/birth, aging, cheats (31 checks)
+godot --headless --path . -s tests/business_tests.gd       # sales, inventory and shift ledger
 # graphical smoke test: plays the whole day (11 checks) and writes 12 screenshots to build/smoke/
 godot --path . -- --smoke
 godot --path . -- --shots          # quick visual check: 3 screenshots (HUD, sleep, furnish)
@@ -46,15 +49,24 @@ From the start menu you can:
 - **Pause menu:** switch household, edit household, family tree (adopt, aging on/off), and toggle "Inactive households progress".
 - **Try for Baby:** click your partner. It appears for adults in a romantic relationship. The moment is off-screen (fade to black), and if it leads to a pregnancy, a baby with DNA from both parents is born 3 days later. Twins happen occasionally.
 
-## Cheat codes (owner-approved access)
-Cheats only work in private worlds. You, as the owner, issue a personal code to each person you approve:
+## God Mode and cheat codes
+
+Open **Pause → God Mode** or press **Ctrl+Shift+C** in a private world. Once unlocked, you can add funds, fill household needs, advance the simulation by an hour, toggle aging, or enter a cheat command.
+
+- **Capture** saves the entire campaign, including every household, its lots and construction, relationships, business progress, and actions in progress. There are three slots each for Alder Bungalow and the Neighborhood.
+- **Restore** asks for confirmation and reopens the snapshot in the game. **Before restore** holds the world you were playing immediately before the last restore. To keep playing a restored world from the title screen, use the normal Save command.
+- Snapshots are kept in `user://snapshots`. Each campaign uses its own checkpoint slots across playthroughs.
+
+### Owner-issued access
+
+The owner issues a personal access code to each approved player:
 ```bash
 # once: creates YOUR private key outside the repo (keep it secret, back it up) and writes data/cheat_public_key.pem
 godot --headless --path . -s tools/cheat_keys.gd -- init
 # for each person you approve (you, Ricardo, anyone you both choose):
 godot --headless --path . -s tools/cheat_keys.gd -- issue "Ricardo"
 ```
-Commit `data/cheat_public_key.pem` and rebuild the game. To use a code in game, press **Ctrl+Shift+C** and enter your name and code once.
+Commit `data/cheat_public_key.pem` and rebuild the game. Enter the issued name and code in God Mode once on each device.
 Commands: `money 500`, `needs max`, `time +3`, `speed 2`, `aging on|off`, `ageup <name>`, `pregnant <name>`, `flag <story_flag>`, `skipstory`.
 Codes can't be forged without your private key, and a code only works for the name it was issued to. Because the game is offline, someone
 determined could still modify the program itself, so treat this as access control for friends, not anti-piracy.

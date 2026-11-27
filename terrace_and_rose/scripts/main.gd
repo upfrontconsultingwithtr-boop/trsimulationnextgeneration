@@ -7,6 +7,9 @@ var story_open := false
 var creator: CreatorUI
 var preview: AvatarView
 var cheat_panel: PanelContainer
+var cheat_overlay: ColorRect
+var cheat_from_pause := false
+var snapshots := WorldSnapshots.new()
 var fade: ColorRect
 var biz_panel: BusinessPanel
 var _speed_before := 1
@@ -51,8 +54,16 @@ func _ready() -> void:
 	popup = PopupMenu.new(); root.add_child(popup); popup.id_pressed.connect(_on_popup)
 	biz_panel = BusinessPanel.new(); root.add_child(biz_panel); biz_panel.visible = false
 	biz_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER); biz_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH; biz_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	cheat_panel = PanelContainer.new(); root.add_child(cheat_panel); cheat_panel.visible = false
-	cheat_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP); cheat_panel.position.y = 80
+	cheat_overlay = ColorRect.new()
+	cheat_overlay.color = Color(0.05, 0.04, 0.03, 0.55)
+	root.add_child(cheat_overlay)
+	cheat_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cheat_overlay.hide()
+	var center := CenterContainer.new()
+	cheat_overlay.add_child(center)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cheat_panel = PanelContainer.new()
+	center.add_child(cheat_panel)
 	world = WorldView.new(); add_child(world)
 	rig = CameraRig.new(); add_child(rig)
 	focus_marker = MeshInstance3D.new(); var tor := TorusMesh.new(); tor.inner_radius = 0.42; tor.outer_radius = 0.5; focus_marker.mesh = tor
@@ -103,6 +114,7 @@ func _wire_ui() -> void:
 	menus.preset_highlight.connect(func(p): _show_title_scene(p))
 	menus.resume.connect(func(): menus.visible = false; hud.visible = true)
 	menus.save_requested.connect(save_game)
+	menus.god_mode_requested.connect(_toggle_cheats)
 	menus.load_requested.connect(func(): load_game(_slot()); menus.visible = false)
 	menus.neighborhood_new.connect(start_neighborhood)
 	menus.neighborhood_continue.connect(func(): load_game(HOOD_SLOT))
@@ -152,6 +164,10 @@ func start_new(preset: String) -> void:
 
 func _begin(s: Simulation) -> void:
 	sim = s; furn = Furnishing.new(sim)
+	acc = 0.0
+	cheat_overlay.hide()
+	biz_panel.hide()
+	popup.hide()
 	_select_structure("")
 	world.build(sim, sim.state["active_lot"])
 	world.wall_mode = 1
@@ -218,34 +234,175 @@ func _creator_done(hid: String) -> void:
 		hud.visible = true; rig.input_enabled = true; sim.set_speed(1)
 		hud.push_log("done", "Household saved.")
 
-# ------------------------------------------------------------------ cheats
+# ------------------------------------------------------------------ private God Mode
 func _toggle_cheats() -> void:
-	if cheat_panel.visible: cheat_panel.visible = false; return
-	for c in cheat_panel.get_children(): c.queue_free()
-	var v := VBoxContainer.new(); v.custom_minimum_size.x = 560; cheat_panel.add_child(v)
-	v.add_child(UiTheme.title_label("Cheat console", 22))
-	var out := Label.new(); out.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; out.custom_minimum_size.x = 540
-	if bool(sim.state.get("settings", {}).get("shared", false)):
-		out.text = "Cheats are disabled in shared worlds."; v.add_child(out); cheat_panel.visible = true; return
+	if cheat_overlay.visible:
+		_close_cheats()
+		return
+	if not playing or creator.visible or story_open:
+		return
+	cheat_from_pause = menus.visible
+	menus.hide()
+	hud.hide()
+	biz_panel.hide()
+	popup.hide()
+	rig.input_enabled = false
+	sfx["sizzle"].stop()
+	cheat_overlay.show()
+	_show_cheats()
+
+func _close_cheats() -> void:
+	cheat_overlay.hide()
+	hud.visible = not cheat_from_pause
+	rig.input_enabled = true
+	if cheat_from_pause:
+		menus.show_pause()
+
+func _god_button(parent: Control, title: String, callback: Callable) -> Button:
+	var button := Button.new()
+	button.text = title
+	button.custom_minimum_size.y = 38
+	parent.add_child(button)
+	button.pressed.connect(callback)
+	return button
+
+func _show_cheats() -> void:
+	for child in cheat_panel.get_children():
+		cheat_panel.remove_child(child)
+		child.queue_free()
+	var body := VBoxContainer.new()
+	body.custom_minimum_size.x = 620
+	body.add_theme_constant_override("separation", 8)
+	cheat_panel.add_child(body)
+	body.add_child(UiTheme.title_label("God Mode", 28))
+	var status := Label.new()
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if not WorldSnapshots.is_private(sim.state):
+		status.text = "God Mode is available in private worlds."
+		body.add_child(status)
+		_god_button(body, "Close", _close_cheats).grab_focus.call_deferred()
+		return
 	var who := Cheats.unlocked_name()
-	if who == "":
+	if who.is_empty():
+		if FileAccess.file_exists(Cheats.PUBLIC_KEY):
+			var player_name := LineEdit.new()
+			player_name.placeholder_text = "Your name (as issued)"
+			body.add_child(player_name)
+			var code := LineEdit.new()
+			code.placeholder_text = "Owner-issued access code"
+			code.secret = true
+			body.add_child(code)
+			var unlock := func():
+				if Cheats.unlock(player_name.text, code.text):
+					_show_cheats()
+				else:
+					status.text = "That code isn't valid for that name."
+			_god_button(body, "Unlock", unlock)
+			code.text_submitted.connect(func(_text): unlock.call())
+			player_name.grab_focus.call_deferred()
+		else:
+			status.text = "Set up owner access using the Cheat codes section of the README."
+		body.add_child(status)
+		var close := _god_button(body, "Close", _close_cheats)
 		if not FileAccess.file_exists(Cheats.PUBLIC_KEY):
-			out.text = "The owner hasn't set up cheat keys yet. See README → Cheat codes."
-			v.add_child(out); cheat_panel.visible = true; return
-		var n := LineEdit.new(); n.placeholder_text = "Your name (as issued)"; v.add_child(n)
-		var code := LineEdit.new(); code.placeholder_text = "Access code"; v.add_child(code)
-		var b := Button.new(); b.text = "Unlock"; v.add_child(b); v.add_child(out)
-		b.pressed.connect(func():
-			if Cheats.unlock(n.text, code.text): _toggle_cheats(); _toggle_cheats()
-			else: out.text = "That code isn't valid for that name.")
-		cheat_panel.visible = true; n.grab_focus.call_deferred(); return
-	out.text = "Access: %s. %s" % [who, Cheats.HELP]
-	var line := LineEdit.new(); line.placeholder_text = "e.g. money 500"
-	line.text_submitted.connect(func(t):
-		var r := Cheats.run(sim.state, t); out.text = r["text"]; line.clear()
-		play("coins" if r["ok"] else "ui_error"))
-	v.add_child(line); v.add_child(out)
-	cheat_panel.visible = true; line.grab_focus.call_deferred()
+			close.grab_focus.call_deferred()
+		return
+
+	var controls := HBoxContainer.new()
+	body.add_child(controls)
+	_god_button(controls, "Add 500.00", _run_cheat.bind("money 500", status))
+	_god_button(controls, "Fill household needs", _run_cheat.bind("needs max", status))
+	_god_button(controls, "Advance one hour", func():
+		sim.advance_minutes(60)
+		status.text = GameState.hour_text(sim.minute()))
+	var aging := Button.new()
+	aging.custom_minimum_size.y = 38
+	aging.toggle_mode = true
+	controls.add_child(aging)
+	var update_aging := func():
+		aging.set_pressed_no_signal(bool(sim.state["settings"].get("aging", false)))
+		aging.text = "Aging on" if aging.button_pressed else "Aging off"
+	update_aging.call()
+	aging.toggled.connect(func(enabled):
+		_run_cheat("aging on" if enabled else "aging off", status)
+		update_aging.call())
+	var line := LineEdit.new()
+	line.placeholder_text = "Enter a command or type help"
+	body.add_child(line)
+	line.text_submitted.connect(func(command):
+		_run_cheat(command, status)
+		update_aging.call()
+		line.clear())
+	body.add_child(UiTheme.title_label("World snapshots", 20))
+	var rows := VBoxContainer.new()
+	body.add_child(rows)
+	_refresh_snapshots(rows, status)
+	status.text = "Unlocked for %s." % who
+	body.add_child(status)
+	_god_button(body, "Close", _close_cheats).grab_focus.call_deferred()
+
+func _run_cheat(command: String, status: Label) -> void:
+	var result := Cheats.run(sim.state, command)
+	status.text = result["text"]
+	play("coins" if result["ok"] else "ui_error")
+
+func _refresh_snapshots(rows: VBoxContainer, status: Label) -> void:
+	for child in rows.get_children():
+		rows.remove_child(child)
+		child.queue_free()
+	for slot in range(WorldSnapshots.MANUAL_SLOTS + 1):
+		var title := "Before restore" if slot == WorldSnapshots.BEFORE_RESTORE else "Snapshot %d" % slot
+		var row := HBoxContainer.new()
+		rows.add_child(row)
+		var detail := Label.new()
+		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		row.add_child(detail)
+		var exists := snapshots.has_snapshot(sim.state, slot)
+		var saved := snapshots.read_snapshot(sim.state, slot) if exists else {"ok": false}
+		var description := "Unreadable" if exists else "Empty"
+		if saved["ok"]:
+			var state: Dictionary = saved["state"]
+			var household: Dictionary = state["households"][state["active_household"]]
+			description = "%s · %s" % [household["name"], GameState.hour_text(int(state["minute"]))]
+		detail.text = "%s · %s" % [title, description]
+		detail.tooltip_text = detail.text
+		if slot != WorldSnapshots.BEFORE_RESTORE:
+			_god_button(row, "Replace" if exists else "Capture", func():
+				if exists:
+					_confirm_snapshot("Replace %s with the current world?" % title, _capture_snapshot.bind(slot, rows, status))
+				else:
+					_capture_snapshot(slot, rows, status))
+		var restore := _god_button(row, "Restore", func():
+			_confirm_snapshot("Restore %s? Your current world will be kept under Before restore." % title, _restore_snapshot.bind(slot, status)))
+		restore.disabled = not saved["ok"]
+
+func _confirm_snapshot(message: String, action: Callable) -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.dialog_text = message
+	cheat_panel.add_child(dialog)
+	dialog.confirmed.connect(func():
+		dialog.queue_free()
+		action.call())
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
+
+func _capture_snapshot(slot: int, rows: VBoxContainer, status: Label) -> void:
+	var result := snapshots.capture(sim.state, slot)
+	status.text = "Snapshot %d captured." % slot if result["ok"] else result["error"]
+	play("chime_done" if result["ok"] else "ui_error")
+	_refresh_snapshots(rows, status)
+
+func _restore_snapshot(slot: int, status: Label) -> void:
+	var result := snapshots.restore(sim.state, slot)
+	if not result["ok"]:
+		status.text = result["error"]
+		play("ui_error")
+		return
+	_begin(Simulation.new(result["state"]))
+	hud.push_log("save", "World restored. Your previous progress is in Before restore.")
+	if not String(result["warning"]).is_empty():
+		hud.push_log("error", result["warning"])
 
 func _toggle_business() -> void:
 	if biz_panel.visible: biz_panel.visible = false; return
@@ -304,7 +461,7 @@ func _open_pause() -> void:
 
 # ------------------------------------------------------------------ loop
 func _process(delta: float) -> void:
-	if playing and not menus.visible:
+	if playing and not menus.visible and not cheat_overlay.visible:
 		acc += delta * Simulation.SPEED_TICKS[int(sim.state["speed"])]
 		var n := 0
 		while acc >= 1.0 and n < 200:
@@ -326,14 +483,17 @@ func _process(delta: float) -> void:
 		world.set_time(sim.minute() if playing else 17 * 60 + 20)
 		world.sync_characters(delta, sim.minute())
 		world.update_cutaway(rig.flat_forward())
-	if furnishing: _update_ghost(get_viewport().get_mouse_position())
+	if furnishing and not cheat_overlay.visible: _update_ghost(get_viewport().get_mouse_position())
 	_update_focus_marker()
 
 # ------------------------------------------------------------------ input
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("cheat_console") and playing: _toggle_cheats(); return
+	if cheat_overlay.visible:
+		if e.is_action_pressed("menu"): _close_cheats()
+		return
 	if e.is_action_pressed("business_panel") and playing and not story_open: _toggle_business(); return
-	if story_open or cheat_panel.visible or creator.visible: return
+	if story_open or creator.visible: return
 	if not playing or menus.visible: 
 		if playing and e.is_action_pressed("menu"): menus.visible = false; hud.visible = true
 		return

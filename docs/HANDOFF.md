@@ -1,6 +1,6 @@
-# Terrace & Rose — Handoff / Where we are (2026-11-27)
+# Terrace & Rose — Handoff (2026-11-27)
 
-**Repo branch:** `ccr-049c17c9-ws2j7q`. All work is committed and pushed.
+**Base branch:** `ccr-049c17c9-ws2j7q`.
 **Game folder:** `terrace_and_rose/` (Godot 4.5.1). The older web prototype in the repo root (`src/`, `server/`) is kept but no longer developed.
 
 ## Play it
@@ -16,21 +16,20 @@
    - Owner-signed cheat codes (`tools/cheat_keys.gd`).
 3. **Businesses:** Rowan & Rye Bakery and Petal & Pine florist. Hours, prices, stock reservations, customers, register staffing, and full shifts with a reconciled ledger (press O).
 4. **Realistic humans:** MakeHuman/MPFB CC0 bodies (7 frames × ages) with morphs (ancestry, build, age), 21 skin textures, recolourable fitted clothes and strand hair. Generator: `tools/blender/build_humans.py`.
-5. **CI:** every push to `terrace_and_rose/**` runs all tests and builds Windows and Linux downloads.
+5. **Home editor:** open Build to place and remove walls, doors, windows and floors. The preview shows cost and remaining funds. Edits support touch, undo/redo, save and reload.
+6. **Private God Mode:** open it from Pause or Ctrl+Shift+C. Owner-issued codes unlock quick controls, the cheat console and three world snapshots per campaign. Before restore preserves the world you were playing. Normal saves are independent.
+7. **CI:** every push to `terrace_and_rose/**` runs all tests and builds Windows and Linux downloads.
 
-## Tests (all passing at handoff)
-`run_tests` 69 · `neighborhood_tests` 34 · `family_tests` 31 · `business_tests` 23 · `genetics_tests` 8 · graphical smoke 11/11.
-Commands are in `terrace_and_rose/README.md`.
+## Tests
+See the commands in `terrace_and_rose/README.md` for headless regression tests and the graphical smoke test. The regression suite now covers construction and snapshot restoration.
 
 ## Next, in order (see docs/ROADMAP.md)
-1. **Home editor:** place and remove walls, doors, windows and floors (the lot maps in `scripts/core/lot_layouts.gd` are ASCII grids, so build mode should edit those cells), plus a budget preview and touch controls.
-2. **Private God Mode** with snapshots. Cheats already cover money, needs, time, aging and pregnancy.
-3. **One complete vacation:** Brineglass Harbor lodge, an activity, and memories.
-4. **Street mode:** open town, driving, police/Heat, Gangster/crime and Detective careers, missions, Case Files mysteries (fictionalised, inspired by century-old cases).
-5. **Online:** invite-only shared worlds, friends, consent-gated shared families.
-6. **Character polish:** blink and expressions, earrings and beard meshes, more outfits.
+1. **One complete vacation:** Brineglass Harbor lodge, an activity, and memories.
+2. **Street mode:** open town, driving, police/Heat, Gangster/crime and Detective careers, missions, Case Files mysteries (fictionalised, inspired by century-old cases).
+3. **Online:** invite-only shared worlds, friends, consent-gated shared families.
+4. **Character polish:** blink and expressions, earrings and beard meshes, more outfits.
 
 ## Known limits
-- Explicit sexual content is not in scope. Intimacy fades to black. A Mature setting (language, darker stories) is age-gated and limited to private worlds.
+- The planned desktop release is one adult-only explicit edition. Intimacy fades to black in the current development build. The future online community requires age-appropriate experiences and same-age-group visibility and interaction.
 - Cheat keys: the owner must run `tools/cheat_keys.gd -- init` locally (the private key stays with them) and commit the public key.
 - Builds aren't code-signed, so Windows SmartScreen shows a warning.

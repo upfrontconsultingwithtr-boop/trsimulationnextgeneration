@@ -8,6 +8,7 @@ signal preset_highlight(preset: String)
 signal resume
 signal save_requested
 signal load_requested
+signal god_mode_requested
 signal quit_to_title
 signal neighborhood_new(hid: String)
 signal neighborhood_continue
@@ -155,6 +156,7 @@ func show_pause() -> void:
 		_btn(v, "Edit household", func(): edit_household.emit())
 		_btn(v, "Family tree", func(): show_family_cb.call())
 		_btn(v, "Inactive households progress: %s" % ("On" if inactive_on else "Off"), func(): toggle_inactive.emit())
+	_btn(v, "God Mode", func(): god_mode_requested.emit())
 	_btn(v, "Controls", show_controls.bind(show_pause))
 	_btn(v, "Quit to title", func(): quit_to_title.emit())
 	_btn(v, "Quit game", func(): get_tree().quit())

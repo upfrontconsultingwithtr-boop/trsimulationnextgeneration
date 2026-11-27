@@ -38,7 +38,7 @@ Status key: ✅ done · 🔨 in progress · ⏳ planned
 | # | Milestone | Status |
 |---|---|---|
 | P2-1 | First playable neighborhood: Rowan, Park, Bell and Alvarez households (homes, budgets, relationships, goals, stories in progress); one story with branching outcomes; household and character creator with family tree; **"child from two parents"** genetics; household switching; save/reload | 🔨 genetics module done and tested |
-| P2-2 | Build, work, travel: walls/doors/windows/floors editor with budget preview and touch controls; one complete bakery/café shift; one complete vacation; private God Mode with snapshots | 🔨 Home editor and business shifts implemented |
+| P2-2 | Build, work, travel: walls/doors/windows/floors editor with budget preview and touch controls; one complete bakery/café shift; one complete vacation; private God Mode with snapshots | 🔨 Home editor, business shifts, and private God Mode implemented |
 | P2-3 | Play together: accounts, profiles, friends, invite-only shared world (self-hosted or local server), preset interactions, mutual-consent shared family that persists; blocking, reporting, privacy | ⏳ |
 | P2-4 | Community: share households and lots, more social activities, more stories | ⏳ |
 
@@ -87,6 +87,7 @@ In addition to the Gangster career, criminal paths are available for both player
 
 ## Desktop and live audience requirements
 
-- The initial desktop release is for adults. The current build uses fade-to-black intimacy. Mature and explicit adult desktop editions are requested future release tracks.
-- The live community needs age-specific experiences. Enforce access and matchmaking server-side. Keep accounts, invitations, searchable profiles, messages and shared spaces within the applicable age group. Test cross-group access before a live rollout.
-- The requested mature and explicit live editions are adult-only. Keep adult content and community features separated from youth experiences. Determine eligibility, moderation and distribution requirements before those editions launch.
+- The planned desktop release is one adult-only explicit edition. In the current development build, intimacy fades to black.
+- The live community will offer age-appropriate experiences across age groups. A player can discover, see, and interact only with players in the same age group.
+- Apply the same age-group rule server-side to profiles, search, presence, invitations, matchmaking, public and private spaces, chat, and shared households. Cross-group players must be absent from results and inaccessible through direct links or requests.
+- Define the age groups and how eligibility is established before opening the community. Test account changes and cross-group visibility and interaction before launch.
