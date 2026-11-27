@@ -59,6 +59,12 @@ static func get_mat(name: String) -> Material:
 		"ceramic": m = _base(Color("f2eee6"), 0.3)
 		"roof_tile": m = _textured(Color(1, 1, 1), 0.85, "roof_albedo", "", 0.5)
 		"teal_tile": m = _textured(Color(1, 1, 1), 0.25, "teal_tile_albedo", "", 0.5)
+		"cedar":
+			m = _textured(Color("b6906c"), 0.83, "walnut_albedo", "walnut_normal", 1.7, 0.16)
+			m.uv1_triplanar = true
+			m.uv1_world_triplanar = true
+		"slate_roof": m = _textured(Color("6f858a"), 0.9, "roof_albedo", "", 0.6)
+		"coastal_grass": m = _textured(Color("9d9b70"), 0.95, "grass_albedo", "", 0.72)
 		"grass": m = _textured(Color(1, 1, 1), 1.0, "grass_albedo", "", 0.25)
 		"path": m = _textured(Color(1, 1, 1), 0.9, "path_albedo", "", 0.5)
 		"terracotta_floor": m = _textured(Color("d9906a"), 0.75, "teal_tile_albedo", "", 0.5)

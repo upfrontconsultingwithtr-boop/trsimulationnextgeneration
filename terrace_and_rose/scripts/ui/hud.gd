@@ -15,6 +15,7 @@ signal redo_pressed
 signal menu_pressed
 signal story_choice(beat_id: String, idx: int)
 signal business_pressed
+signal travel_pressed
 
 var clock: Label
 var funds: Label
@@ -25,6 +26,10 @@ var queue_box: VBoxContainer
 var log_box: VBoxContainer
 var focus_label: Label
 var action_bar: HBoxContainer
+var build_button: Button
+var shop_button: Button
+var travel_button: Button
+var work_button: Button
 var furnish_panel: PanelContainer
 var furnish_status: Label
 var structure_tools: OptionButton
@@ -86,8 +91,21 @@ func _ready() -> void:
 		var b := Button.new(); b.focus_mode = Control.FOCUS_NONE
 		b.text = "%s  %s" % [InputConfig.label(a[1]), Simulation.ACTIONS[a[0]]["label"]]
 		var t: String = a[0]; b.pressed.connect(func(): action_pressed.emit(t)); action_bar.add_child(b)
-	var fb := Button.new(); fb.focus_mode = Control.FOCUS_NONE; fb.text = "%s  Build" % InputConfig.label("furnish_toggle"); fb.pressed.connect(func(): furnish_toggled.emit()); action_bar.add_child(fb)
-	var bz := Button.new(); bz.focus_mode = Control.FOCUS_NONE; bz.text = "%s  Shop" % InputConfig.label("business_panel"); bz.pressed.connect(func(): business_pressed.emit()); action_bar.add_child(bz)
+		if t == "work_register": work_button = b
+	build_button = Button.new()
+	build_button.focus_mode = Control.FOCUS_NONE
+	build_button.text = "%s  Build" % InputConfig.label("furnish_toggle")
+	build_button.pressed.connect(furnish_toggled.emit)
+	action_bar.add_child(build_button)
+	shop_button = Button.new()
+	shop_button.focus_mode = Control.FOCUS_NONE
+	shop_button.text = "%s  Shop" % InputConfig.label("business_panel")
+	shop_button.pressed.connect(business_pressed.emit)
+	action_bar.add_child(shop_button)
+	travel_button = Button.new()
+	travel_button.focus_mode = Control.FOCUS_NONE
+	travel_button.pressed.connect(travel_pressed.emit)
+	action_bar.add_child(travel_button)
 	furnish_panel = PanelContainer.new(); bv.add_child(furnish_panel)
 	furnish_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var fv := VBoxContainer.new(); furnish_panel.add_child(fv)
@@ -183,6 +201,12 @@ func _panel(parent: Node) -> PanelContainer:
 
 func grid_visibility(show_catalog: bool) -> void:
 	catalog_grid.visible = show_catalog
+
+func set_harbor_stay(active: bool) -> void:
+	build_button.visible = not active
+	shop_button.visible = not active
+	work_button.visible = not active
+	travel_button.text = "Harbor stay" if active else "Travel"
 
 func refresh(sim: Simulation, furnishing_mode: bool, wall_mode: int, focus_text: String) -> void:
 	var me := sim.controlled()

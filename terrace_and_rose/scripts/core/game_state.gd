@@ -156,4 +156,5 @@ static func validate(s: Variant) -> Array[String]:
 		for n in NEED_KEYS:
 			var v: Variant = ch.get("needs", {}).get(n)
 			if typeof(v) != TYPE_INT or int(v) < 0 or int(v) > NEED_MAX: e.append("character %s need %s invalid" % [cid, n])
+	if e.is_empty(): e.append_array(HarborTrip.validate(s))
 	return e

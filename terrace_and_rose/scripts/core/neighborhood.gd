@@ -85,6 +85,8 @@ static func build() -> Dictionary:
 
 ## Switch which household the player controls. Returns {ok, reason}.
 static func switch_to(s: Dictionary, hid: String) -> Dictionary:
+	if HarborTrip.is_away(s):
+		return {"ok": false, "reason": "Check out of Brineglass Harbor before switching households."}
 	var h: Dictionary = s["households"].get(hid, {})
 	if h.is_empty(): return {"ok": false, "reason": "No such household."}
 	if String(h["lot"]) == "": return {"ok": false, "reason": "%s has no home lot to play." % h["name"]}

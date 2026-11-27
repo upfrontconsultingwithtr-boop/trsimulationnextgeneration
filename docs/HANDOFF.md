@@ -18,16 +18,16 @@
 4. **Realistic humans:** MakeHuman/MPFB CC0 bodies (7 frames × ages) with morphs (ancestry, build, age), 21 skin textures, recolourable fitted clothes and strand hair. Generator: `tools/blender/build_humans.py`.
 5. **Home editor:** open Build to place and remove walls, doors, windows and floors. The preview shows cost and remaining funds. Edits support touch, undo/redo, save and reload.
 6. **Private God Mode:** open it from Pause or Ctrl+Shift+C. Owner-issued codes unlock quick controls, the cheat console and three world snapshots per campaign. Before restore preserves the world you were playing. Normal saves are independent.
-7. **CI:** every push to `terrace_and_rose/**` runs all tests and builds Windows and Linux downloads.
+7. **Brineglass Harbor:** use Travel to book the lodge and take the active household there. Search three beach spots, save mid-trip, and check out to return home with a Travel memory.
+8. **CI:** every push to `terrace_and_rose/**` runs all tests and builds Windows and Linux downloads.
 
 ## Tests
 See the commands in `terrace_and_rose/README.md` for headless regression tests and the graphical smoke test. The regression suite now covers construction and snapshot restoration.
 
 ## Next, in order (see docs/ROADMAP.md)
-1. **One complete vacation:** Brineglass Harbor lodge, an activity, and memories.
-2. **Street mode:** open town, driving, police/Heat, Gangster/crime and Detective careers, missions, Case Files mysteries (fictionalised, inspired by century-old cases).
-3. **Online:** invite-only shared worlds, friends, consent-gated shared families.
-4. **Character polish:** blink and expressions, earrings and beard meshes, more outfits.
+1. **Street mode:** open town, driving, police/Heat, Gangster/crime and Detective careers, missions, Case Files mysteries (fictionalised, inspired by century-old cases).
+2. **Online:** invite-only shared worlds, friends, consent-gated shared families.
+3. **Character polish:** blink and expressions, earrings and beard meshes, more outfits.
 
 ## Known limits
 - The planned desktop release is one adult-only explicit edition. Intimacy fades to black in the current development build. The future online community requires age-appropriate experiences and same-age-group visibility and interaction.

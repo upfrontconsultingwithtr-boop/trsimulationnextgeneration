@@ -33,14 +33,14 @@ Status key: ✅ done · 🔨 in progress · ⏳ planned
 | M2 | Build & customize: editable walls, doors and windows; room finishes; fuller creator (body, age, skin undertone, hair texture, outfits, pronouns, voice); outfit fit tests while walking, sitting and reaching | ⏳ |
 | M3 | Stem & Steam florist café: hours, menu, prices, stock, orders, ledger reconciliation | ⏳ |
 | M4 | Seasons and holidays: 7-day seasons, weather, Lantern Walk, custom holidays | ⏳ |
-| M5 | Brineglass Harbor: cedar lodge, boardwalk, beachcombing, market tasting, booking with full cost, memories | ⏳ |
+| M5 | Brineglass Harbor: cedar lodge, boardwalk, beachcombing, market tasting, booking with full cost, memories | 🔨 Lodge, beachcombing, booking and memories playable |
 | M6 | Careers, skills, gardening, pets, life stages, journals, photo album, UI scaling, reduced motion, port evaluation | ⏳ |
 
 ## Part 2 — Build a Living World (continues from Part 1, same name, designs and save format)
 | # | Milestone | Status |
 |---|---|---|
 | P2-1 | First playable neighborhood: Rowan, Park, Bell and Alvarez households (homes, budgets, relationships, goals, stories in progress); one story with branching outcomes; household and character creator with family tree; **"child from two parents"** genetics; household switching; save/reload | 🔨 genetics module done and tested |
-| P2-2 | Build, work, travel: walls/doors/windows/floors editor with budget preview and touch controls; one complete bakery/café shift; one complete vacation; private God Mode with snapshots | 🔨 Home editor, business shifts, and private God Mode implemented |
+| P2-2 | Build, work, travel: walls/doors/windows/floors editor with budget preview and touch controls; one complete bakery/café shift; one complete vacation; private God Mode with snapshots | 🔨 Home editor, business shifts, private God Mode, and first Brineglass stay implemented |
 | P2-3 | Play together: accounts, profiles, friends, invite-only shared world (self-hosted or local server), preset interactions, mutual-consent shared family that persists; blocking, reporting, privacy | ⏳ |
 | P2-4 | Community: share households and lots, more social activities, more stories | ⏳ |
 

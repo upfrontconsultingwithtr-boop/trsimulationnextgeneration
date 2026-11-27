@@ -4,6 +4,8 @@ extends Node3D
 const SLOT := "household1"
 const HOOD_SLOT := "neighborhood"
 var story_open := false
+var travel_from_pause := false
+var travel_open := false
 var creator: CreatorUI
 var preview: AvatarView
 var cheat_panel: PanelContainer
@@ -122,6 +124,11 @@ func _wire_ui() -> void:
 	menus.toggle_inactive.connect(func(): sim.state["settings"]["inactive_progress"] = not bool(sim.state["settings"]["inactive_progress"]); menus.inactive_on = sim.state["settings"]["inactive_progress"]; menus.show_pause())
 	hud.story_choice.connect(_on_story_choice)
 	hud.business_pressed.connect(_toggle_business)
+	hud.travel_pressed.connect(_open_travel.bind(false))
+	menus.travel_requested.connect(_open_travel.bind(true))
+	menus.harbor_booked.connect(_book_harbor)
+	menus.harbor_search.connect(_search_harbor)
+	menus.harbor_checkout.connect(_checkout_harbor)
 	menus.create_household.connect(_open_creator_new)
 	menus.edit_household.connect(func(): menus.visible = false; _open_creator(sim.state, sim.state["active_household"], true))
 	menus.show_family_cb = func(): menus.show_family(sim.state, sim.state["active_household"])
@@ -164,6 +171,7 @@ func start_new(preset: String) -> void:
 
 func _begin(s: Simulation) -> void:
 	sim = s; furn = Furnishing.new(sim)
+	travel_open = false
 	acc = 0.0
 	cheat_overlay.hide()
 	biz_panel.hide()
@@ -173,7 +181,14 @@ func _begin(s: Simulation) -> void:
 	world.wall_mode = 1
 	playing = true; furnishing = false; menus.visible = false; hud.visible = true
 	rig.input_enabled = true; rig.auto_orbit = 0.0; rig.dist = 17.0; rig.pitch = deg_to_rad(-45); rig.yaw = deg_to_rad(30)
-	rig.focus(world.house_center + Vector3(0, 0, 1.5))
+	var at_harbor := HarborTrip.is_away(sim.state)
+	if at_harbor:
+		rig.yaw = deg_to_rad(47)
+		rig.focus(Vector3(6.4, 0, 7), 24.0)
+	else:
+		rig.focus(world.house_center + Vector3(0, 0, 1.5))
+	menus.at_harbor = at_harbor
+	hud.set_harbor_stay(at_harbor)
 	focus_list.clear(); focus_idx = -1; focus_marker.visible = false
 	menus.in_neighborhood = String(sim.state.get("world", "")) == "neighborhood"
 	menus.inactive_on = bool(sim.state.get("settings", {}).get("inactive_progress", true))
@@ -404,7 +419,57 @@ func _restore_snapshot(slot: int, status: Label) -> void:
 	if not String(result["warning"]).is_empty():
 		hud.push_log("error", result["warning"])
 
+# ------------------------------------------------------------------ harbor vacations
+func _open_travel(from_pause: bool) -> void:
+	if not playing or story_open:
+		return
+	travel_from_pause = from_pause
+	travel_open = true
+	biz_panel.hide()
+	popup.hide()
+	hud.hide()
+	rig.input_enabled = false
+	menus.show_travel(sim.state, _close_travel)
+
+func _close_travel() -> void:
+	travel_open = false
+	rig.input_enabled = true
+	if travel_from_pause:
+		menus.show_pause()
+	else:
+		menus.hide()
+		hud.show()
+
+func _book_harbor() -> void:
+	var result := sim.book_harbor()
+	if not result["ok"]:
+		menus.show_travel(sim.state, _close_travel, result["reason"])
+		return
+	_begin(sim)
+	hud.push_log("info", "Checked in at Brineglass Harbor for %s. Open Harbor stay to go beachcombing." % Catalog.format_cents(result["price"]))
+
+func _search_harbor(spot: String) -> void:
+	var result := sim.queue_beachcomb(spot)
+	if not result["ok"]:
+		menus.show_travel(sim.state, _close_travel, result["reason"])
+		return
+	travel_from_pause = false
+	_close_travel()
+	if int(sim.state["speed"]) == 0:
+		sim.set_speed(1)
+	hud.push_log("info", "Heading to %s. Follow your character down to the beach." % HarborTrip.SPOTS[spot]["place"])
+
+func _checkout_harbor() -> void:
+	var result := sim.check_out_harbor()
+	if not result["ok"]:
+		menus.show_travel(sim.state, _close_travel, result["reason"])
+		return
+	_begin(sim)
+	hud.push_log("done", "Welcome home. Your Brineglass Harbor trip is saved in Travel memories.")
+
 func _toggle_business() -> void:
+	if HarborTrip.is_away(sim.state):
+		return
 	if biz_panel.visible: biz_panel.visible = false; return
 	biz_panel.open(sim)
 
@@ -488,6 +553,9 @@ func _process(delta: float) -> void:
 
 # ------------------------------------------------------------------ input
 func _unhandled_input(e: InputEvent) -> void:
+	if travel_open:
+		if e.is_action_pressed("menu"): _close_travel()
+		return
 	if e.is_action_pressed("cheat_console") and playing: _toggle_cheats(); return
 	if cheat_overlay.visible:
 		if e.is_action_pressed("menu"): _close_cheats()
@@ -644,6 +712,8 @@ func _update_focus_marker() -> void:
 
 # ------------------------------------------------------------------ furnishing
 func _toggle_furnish() -> void:
+	if HarborTrip.is_away(sim.state):
+		return
 	furnishing = not furnishing
 	_select_structure("")
 	ghost_from_mouse = true
