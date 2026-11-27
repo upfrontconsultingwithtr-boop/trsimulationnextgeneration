@@ -30,6 +30,7 @@ func _init() -> void:
 	test_pause_and_fast_visitor()
 	test_save_load_and_corruption()
 	test_world_snapshots()
+	test_brineglass_harbor()
 	print("\n%d passed, %d failed" % [passed, failed.size()])
 	for f in failed: print("  failed: ", f)
 	quit(0 if failed.is_empty() else 1)
@@ -302,3 +303,52 @@ func test_world_snapshots() -> void:
 	for filename in DirAccess.get_files_at(directory):
 		DirAccess.remove_absolute(directory.path_join(filename))
 	DirAccess.remove_absolute(directory)
+
+func test_brineglass_harbor() -> void:
+	print("[vacation: Brineglass Harbor]")
+	var sim := Simulation.new(Neighborhood.build())
+	Neighborhood.switch_to(sim.state, "bell")
+	var price := HarborTrip.quote(sim.state)
+	var original_funds := sim.funds()
+	var members: Array = sim.household()["members"].duplicate()
+	var home: String = sim.state["active_lot"]
+	var controlled: String = sim.state["controlled"]
+	sim.household()["funds"] = price - 1
+	var before := GameState.checksum(sim.state)
+	check(not sim.book_harbor()["ok"] and GameState.checksum(sim.state) == before, "unaffordable booking leaves the world untouched")
+	check(not sim.queue_beachcomb("shell")["ok"] and not sim.check_out_harbor()["ok"], "activity and checkout require a booking")
+	sim.household()["funds"] = original_funds
+	var booking := sim.book_harbor()
+	check(booking["ok"] and price == HarborTrip.BASE_PRICE + members.size() * HarborTrip.GUEST_PRICE and sim.funds() == original_funds - price, "full family fare is charged once at booking")
+	check(not sim.book_harbor()["ok"] and sim.funds() == original_funds - price, "rebooking while away cannot charge again")
+	check(HarborTrip.is_away(sim.state) and sim.household()["lot"] == home, "harbor opens as active lot and home ownership is retained")
+	var arrivals := {}
+	for cid in members:
+		var person := sim.character(cid)
+		var cell := GameState.cell_of(person["cell"])
+		check(person["lot"] == HarborTrip.LOT and sim.walkable(HarborTrip.LOT, cell) and not arrivals.has(cell), "guest %s arrives at a free cell" % cid)
+		arrivals[cell] = true
+	check(sim.state["controlled"] == controlled and not Neighborhood.switch_to(sim.state, "park")["ok"], "control and active booking survive an attempted household switch")
+	check(not sim.walkable(HarborTrip.LOT, Vector2i(2, 16)), "ocean cells are blocked")
+	check(sim.queue_beachcomb("shell")["ok"] and not sim.queue_beachcomb("shell")["ok"], "each beach search can be queued once")
+	sim.advance_minutes(3)
+	var round_trip := SaveSystem.decode(SaveSystem.encode(sim.state))
+	check(round_trip["ok"] and GameState.checksum(round_trip.get("state", {})) == GameState.checksum(sim.state), "a stay with an active search round-trips in a normal save")
+	if not round_trip["ok"]:
+		return
+	sim = Simulation.new(round_trip["state"])
+	run_until_idle(sim, controlled)
+	check(sim.state["harbor_stay"]["finds"] == ["shell"] and not sim.queue_beachcomb("shell")["ok"], "resumed search yields exactly one find")
+	for spot in ["glass", "stone"]:
+		check(sim.queue_beachcomb(spot)["ok"], "%s search can be queued" % spot)
+	run_until_idle(sim, controlled)
+	check(sim.state["harbor_stay"]["finds"] == ["shell", "glass", "stone"], "all three beach sites are reachable")
+	var kitchen := sim.queue_action(controlled, "prepare_meal")
+	run_until_idle(sim, controlled)
+	check(kitchen["ok"] and sim.controlled()["holding"] == "meal", "lodge kitchen is usable")
+	check(sim.check_out_harbor()["ok"] and sim.state["active_lot"] == home and sim.state["controlled"] == controlled, "checkout returns to the original lot and character")
+	check(members.all(func(cid): return sim.character(cid)["lot"] == home), "the whole household comes home")
+	var memories := HarborTrip.memories(sim.state)
+	check(memories.size() == 1 and memories[0]["finds"] == ["shell", "glass", "stone"], "checkout records the collected keepsakes as a household memory")
+	check(not sim.check_out_harbor()["ok"] and HarborTrip.memories(sim.state).size() == 1, "duplicate checkout does not add memories")
+	check(GameState.validate(sim.state).is_empty() and SaveSystem.decode(SaveSystem.encode(sim.state))["ok"], "returned world and memories can be saved")

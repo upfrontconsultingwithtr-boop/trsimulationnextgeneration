@@ -9,6 +9,10 @@ signal resume
 signal save_requested
 signal load_requested
 signal god_mode_requested
+signal travel_requested
+signal harbor_booked
+signal harbor_search(spot: String)
+signal harbor_checkout
 signal quit_to_title
 signal neighborhood_new(hid: String)
 signal neighborhood_continue
@@ -25,6 +29,7 @@ var has_save := false
 var has_hood_save := false
 var in_neighborhood := false
 var inactive_on := true
+var at_harbor := false
 var show_family_cb: Callable
 
 func _ready() -> void:
@@ -151,9 +156,11 @@ func show_pause() -> void:
 	var r := _btn(v, "Resume", func(): resume.emit())
 	_btn(v, "Save (%s)" % InputConfig.label("quick_save"), func(): save_requested.emit())
 	_btn(v, "Load (%s)" % InputConfig.label("quick_load"), func(): load_requested.emit())
+	_btn(v, "Harbor stay" if at_harbor else "Travel", func(): travel_requested.emit())
 	if in_neighborhood:
-		_btn(v, "Switch household", show_households.bind(true))
-		_btn(v, "Edit household", func(): edit_household.emit())
+		if not at_harbor:
+			_btn(v, "Switch household", show_households.bind(true))
+			_btn(v, "Edit household", func(): edit_household.emit())
 		_btn(v, "Family tree", func(): show_family_cb.call())
 		_btn(v, "Inactive households progress: %s" % ("On" if inactive_on else "Off"), func(): toggle_inactive.emit())
 	_btn(v, "God Mode", func(): god_mode_requested.emit())
@@ -161,6 +168,60 @@ func show_pause() -> void:
 	_btn(v, "Quit to title", func(): quit_to_title.emit())
 	_btn(v, "Quit game", func(): get_tree().quit())
 	r.grab_focus.call_deferred()
+
+func show_travel(s: Dictionary, back: Callable, message: String = "") -> void:
+	_clear()
+	show()
+	var card := _card(580, Control.PRESET_CENTER)
+	card.add_child(UiTheme.title_label(HarborTrip.NAME, 34))
+	var description := Label.new()
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(description)
+	var first: Button
+	if HarborTrip.is_away(s):
+		var finds: Array = s["harbor_stay"]["finds"]
+		description.text = "Beachcombing · %d of %d finds" % [finds.size(), HarborTrip.SPOTS.size()]
+		for spot_id in HarborTrip.SPOTS:
+			var spot: Dictionary = HarborTrip.SPOTS[spot_id]
+			var found := finds.has(spot_id)
+			var spot_button := _btn(card, "%s · %s" % [spot["place"], spot["find"]] if found else "Search %s" % String(spot["place"]).to_lower(), harbor_search.emit.bind(spot_id))
+			spot_button.disabled = found
+			if first == null and not found:
+				first = spot_button
+		var checkout := _btn(card, "Check out and return home", harbor_checkout.emit)
+		if first == null:
+			first = checkout
+	else:
+		var price := HarborTrip.quote(s)
+		description.text = "Take your household to a cedar lodge by the sea. The booking includes travel both ways and the whole lodge."
+		var quote := Label.new()
+		var balance: int = s["households"][s["active_household"]]["funds"]
+		quote.text = "Household funds %s · Booking %s" % [Catalog.format_cents(balance), Catalog.format_cents(price)]
+		card.add_child(quote)
+		var book := _btn(card, "Book and travel", harbor_booked.emit)
+		book.disabled = balance < price
+		if not book.disabled:
+			first = book
+		var memories := HarborTrip.memories(s)
+		if not memories.is_empty():
+			card.add_child(UiTheme.title_label("Travel memories", 20))
+			for i in range(memories.size() - 1, maxi(-1, memories.size() - 4), -1):
+				var memory: Dictionary = memories[i]
+				var names := PackedStringArray()
+				for spot in memory["finds"]:
+					if HarborTrip.SPOTS.has(spot):
+						names.append(HarborTrip.SPOTS[spot]["find"])
+				var summary := Label.new()
+				summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				summary.text = "%s · %s" % [GameState.hour_text(int(memory["returned"])), ", ".join(names) if not names.is_empty() else "A stay at the lodge"]
+				card.add_child(summary)
+	if not message.is_empty():
+		var notice := Label.new()
+		notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		notice.text = message
+		card.add_child(notice)
+	var close := _btn(card, "Back", back)
+	(close if first == null else first).grab_focus.call_deferred()
 
 func show_controls(back: Callable) -> void:
 	_clear(); visible = true

@@ -10,6 +10,7 @@ const ACTIONS := {
 	"walk": {"label": "Walk", "minutes": 0},
 	"prepare_meal": {"label": "Prepare a meal", "item": "prepare_meal", "minutes": 30, "anim": "cook"},
 	"eat": {"label": "Eat", "item": "eat", "minutes": 20, "anim": "eat"},
+	"beachcomb": {"label": "Beachcomb", "minutes": 12, "anim": "idle"},
 	"greet": {"label": "Greet", "minutes": 5, "anim": "wave"},
 	"sit": {"label": "Sit", "item": "sit", "minutes": 60, "anim": "sit_idle"},
 	"sleep": {"label": "Sleep", "item": "sleep", "minutes": 480, "anim": "sleep"},
@@ -51,6 +52,98 @@ func set_speed(i: int) -> void:
 func _emit(kind: String, text: String, actor: String = "", lot_id: String = "") -> void:
 	if lot_id == "" and state["characters"].has(actor): lot_id = state["characters"][actor]["lot"]
 	events.append({"kind": kind, "text": text, "actor": actor, "lot": lot_id})
+
+# ------------------------------------------------------------------ travel
+func book_harbor() -> Dictionary:
+	if HarborTrip.is_away(state) or state.has("harbor_stay"):
+		return {"ok": false, "reason": "This household is already on a trip."}
+	var price := HarborTrip.quote(state)
+	if funds() < price:
+		return {"ok": false, "reason": "The household can't afford the full booking."}
+	var home: String = state["active_lot"]
+	var guests := {}
+	for cid in household()["members"]:
+		var person := character(cid)
+		if person["lot"] == home:
+			guests[cid] = person["cell"].duplicate()
+	if not guests.has(state["controlled"]):
+		return {"ok": false, "reason": "The selected character must be home before leaving."}
+	if guests.size() != household()["members"].size():
+		return {"ok": false, "reason": "Everyone in the household must be home before leaving."}
+	HarborTrip.add_lodge(state)
+	rebuild_nav(HarborTrip.LOT)
+	household()["funds"] = funds() - price
+	state["harbor_stay"] = {
+		"household": state["active_household"], "departed": minute(), "home": home,
+		"home_cells": guests, "finds": [],
+	}
+	state["active_lot"] = HarborTrip.LOT
+	var occupied := {}
+	for cid in guests:
+		var at := _arrival_cell(HarborTrip.LOT, HarborTrip.ARRIVAL, occupied)
+		_relocate(cid, HarborTrip.LOT, at)
+		occupied[at] = true
+	return {"ok": true, "price": price}
+
+func check_out_harbor() -> Dictionary:
+	if not HarborTrip.is_away(state):
+		return {"ok": false, "reason": "There is no active harbor booking."}
+	var stay: Dictionary = state["harbor_stay"]
+	var home: String = stay["home"]
+	var occupied := {}
+	for person in chars_on(home):
+		occupied[GameState.cell_of(person["cell"])] = true
+	var arrivals := {}
+	for cid in household()["members"]:
+		if character(cid)["lot"] != HarborTrip.LOT:
+			continue
+		var preferred := GameState.cell_of(stay["home_cells"].get(cid, [16, 24]))
+		var at := _arrival_cell(home, preferred, occupied)
+		if at.x < 0:
+			return {"ok": false, "reason": "There isn't enough open space for everyone to return home."}
+		arrivals[cid] = at
+		occupied[at] = true
+	for cid in arrivals:
+		_relocate(cid, home, arrivals[cid])
+	HarborTrip.record_visit(state)
+	state.erase("harbor_stay")
+	state["active_lot"] = home
+	return {"ok": true}
+
+func queue_beachcomb(spot: String) -> Dictionary:
+	if not HarborTrip.is_away(state) or not HarborTrip.SPOTS.has(spot):
+		return {"ok": false, "reason": "Choose a beachcombing spot at the harbor."}
+	if state["harbor_stay"]["finds"].has(spot):
+		return {"ok": false, "reason": "You already explored that spot this stay."}
+	var person := controlled()
+	var pending: Array = person["queue"] + [person["current"]]
+	if pending.any(func(action): return action.get("type") == "beachcomb" and action.get("target") == spot):
+		return {"ok": false, "reason": "That search is already in your queue."}
+	return queue_action(state["controlled"], "beachcomb", spot, HarborTrip.SPOTS[spot]["cell"])
+
+func _arrival_cell(lot_id: String, preferred: Vector2i, occupied: Dictionary) -> Vector2i:
+	if walkable(lot_id, preferred) and not occupied.has(preferred):
+		return preferred
+	var best := Vector2i(-1, -1)
+	var distance := INF
+	for y in LotLayouts.SIZE:
+		for x in LotLayouts.SIZE:
+			var cell := Vector2i(x, y)
+			if not occupied.has(cell) and walkable(lot_id, cell):
+				var candidate_distance := cell.distance_squared_to(preferred)
+				if candidate_distance < distance:
+					best = cell
+					distance = candidate_distance
+	return best
+
+func _relocate(cid: String, lot_id: String, at: Vector2i) -> void:
+	var person := character(cid)
+	clear_queue(cid)
+	person["lot"] = lot_id
+	person["cell"] = [at.x, at.y]
+	person["anchor"] = []
+	person["pose"] = "stand"
+	person["anim"] = "idle"
 
 # ------------------------------------------------------------------ navigation
 func rebuild_nav(lid: String) -> void:
@@ -243,8 +336,12 @@ func _start(c: Dictionary, a: Dictionary) -> bool:
 	if c["pose"] != "stand":
 		c["pose"] = "stand"; c["anchor"] = []
 	match type:
-		"walk":
+		"walk", "beachcomb":
 			var goal := GameState.cell_of(a["cell"])
+			if type == "beachcomb":
+				if not HarborTrip.is_away(state) or lid != HarborTrip.LOT or c["household"] != state["active_household"] or not HarborTrip.SPOTS.has(a["target"]):
+					return _fail(c, "That beachcombing spot isn't here.")
+				goal = HarborTrip.SPOTS[a["target"]]["cell"]
 			var p := find_path(lid, here, goal)
 			if p.is_empty(): return _fail(c, "Can't walk there — no clear path.")
 			p.pop_front(); a["path"] = p; a["phase"] = "approach"
@@ -349,6 +446,9 @@ func _arrive(c: Dictionary, a: Dictionary) -> void:
 	a["phase"] = "perform"
 	a["remaining"] = int(ACTIONS[type]["minutes"])
 	c["anim"] = ACTIONS[type].get("anim", "idle")
+	if type == "beachcomb":
+		_face_towards(c, Vector2.LEFT)
+		return
 	if type == "try_for_baby":
 		_emit("fade", "%s and %s share a private moment…" % [c["name"].get_slice(" ", 0), character(a["target"])["name"].get_slice(" ", 0)], c["id"])
 		return
@@ -404,6 +504,12 @@ func _perform_minute(c: Dictionary, a: Dictionary) -> void:
 				r["friendship"] = clampi(int(r["friendship"]) + 10, -100, 100); r["met"] = true
 				state["relationships"][k] = r
 				_emit("done", ("%s met %s. Friendship +10." if first else "%s greeted %s. Friendship +10.") % [c["name"], t["name"]], c["id"])
+		"beachcomb":
+			var finds: Array = state["harbor_stay"]["finds"]
+			if not finds.has(a["target"]):
+				finds.append(a["target"])
+				_need(c, "comfort", 1200)
+				_emit("done", "%s found %s." % [c["name"], String(HarborTrip.SPOTS[a["target"]]["find"]).to_lower()], c["id"])
 		"sit": _emit("done", "%s feels rested after sitting." % c["name"], c["id"])
 		"work_register": _emit("done", "%s finished at the register." % c["name"], c["id"])
 		"try_for_baby":

@@ -14,6 +14,15 @@ Pick the latest green run and download **TerraceAndRose-Windows** or **TerraceAn
 Unzip it and run `TerraceAndRose.exe` on Windows or `TerraceAndRose.x86_64` on Linux. Builds are kept for 30 days.
 Windows may show a SmartScreen warning because the build isn't code-signed (signing certificates cost money). Choose *More info* and then *Run anyway*.
 
+### Chromebook with Intel or AMD
+
+Enable the Linux development environment in ChromeOS Settings. Open the Linux ZIP in Files and copy `TerraceAndRose.x86_64` into **Linux files**. Start it from the Linux Terminal using the compatibility renderer:
+
+```bash
+chmod +x ~/TerraceAndRose.x86_64
+~/TerraceAndRose.x86_64 --rendering-method gl_compatibility -- --low
+```
+
 ## Run it
 1. Install Godot **4.5.1-stable** (standard build, not .NET) from https://godotengine.org/download.
 2. Open Godot, choose **Import**, and select `terrace_and_rose/project.godot`. Then press **Run (F5)**.
@@ -48,6 +57,12 @@ From the start menu you can:
 - **Create a Household:** names, pronouns (including your own), life stage, body, skin, hair texture and colour, outfit and colours, traits, aspiration, and "can become pregnant". Use **Make a child from two parents** (with re-roll) to combine two adults' DNA, set relationships, then move into Willow Lane.
 - **Pause menu:** switch household, edit household, family tree (adopt, aging on/off), and toggle "Inactive households progress".
 - **Try for Baby:** click your partner. It appears for adults in a romantic relationship. The moment is off-screen (fade to black), and if it leads to a pregnancy, a baby with DNA from both parents is born 3 days later. Twins happen occasionally.
+
+## Brineglass Harbor
+
+Select **Travel** from the bottom bar or the Pause menu to see the full booking price for your household. **Book and travel** takes everyone to the cedar lodge. The kitchen, beds, boardwalk, and beach are available as soon as you arrive.
+
+Select **Harbor stay** and choose a beach spot. Your character walks there and searches for a keepsake. The stay and search queue are included in regular saves. **Check out and return home** brings the household home and adds your finds to **Travel memories**.
 
 ## God Mode and cheat codes
 

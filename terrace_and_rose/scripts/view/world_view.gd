@@ -18,6 +18,7 @@ var env: Environment
 var wall_mode := 1                    # 0 up, 1 cutaway, 2 down
 var house_center := Vector3(8, 0, 6)
 var _lay := ""
+var harbor: HarborScenery
 var structure_nodes: Array[Node] = []
 static var low_graphics := false   # software GL / low-end PCs: one cheap sun shadow, no per-light passes
 
@@ -29,7 +30,13 @@ func build(s: Simulation, lot_id: String) -> void:
 	structure_nodes.clear()
 	walls.clear(); furn_nodes.clear(); avatars.clear(); lights_interior.clear()
 	_environment()
-	_ground()
+	harbor = null
+	if lid == HarborTrip.LOT:
+		harbor = HarborScenery.new()
+		add_child(harbor)
+		harbor.build()
+	else:
+		_ground()
 	refresh_structure()
 	_decor()
 	refresh_furniture()
@@ -111,14 +118,14 @@ func _ground() -> void:
 	(g.material_override as StandardMaterial3D).uv1_scale = Vector3(17, 17, 17)
 
 func _floors() -> void:
-	var by := {".": [] as Array[Vector2i], "t": [] as Array[Vector2i], "=": [] as Array[Vector2i]}
+	var by := {".": [] as Array[Vector2i], "t": [] as Array[Vector2i], "=": [] as Array[Vector2i], "s": [] as Array[Vector2i]}
 	for y in LotLayouts.SIZE:
 		for x in LotLayouts.SIZE:
 			var t := sim.tile(lid, Vector2i(x, y))
 			if t == "D" or t == "#" or t == "W": by["."].append(Vector2i(x, y))
 			elif by.has(t): by[t].append(Vector2i(x, y))
 			elif t == "G": by["="].append(Vector2i(x, y))
-	for spec in [[".", 0.03, "walnut_floor"], ["t", 0.02, "terracotta_floor"], ["=", 0.015, "path"]]:
+	for spec in [[".", 0.03, "walnut_floor"], ["t", 0.02, "terracotta_floor"], ["=", 0.015, "path"], ["s", -0.012, "coastal_grass"]]:
 		if not by[spec[0]].is_empty():
 			_mesh(_quad_mesh(by[spec[0]], spec[1]), Palette.get_mat(spec[2]), Vector3.ZERO, false)
 	var xs := []; var zs := []
@@ -130,7 +137,7 @@ func _is_wallish(c: Vector2i) -> bool:
 	return t == "#" or t == "W" or t == "D"
 
 func _walls_and_openings() -> void:
-	var stucco := Palette.get_mat("stucco")
+	var stucco := Palette.get_mat("cedar" if harbor else "stucco")
 	var done := {}
 	for y in LotLayouts.SIZE:
 		for x in LotLayouts.SIZE:
@@ -188,7 +195,7 @@ func _roof() -> void:
 		if tri[0] == tri[1] or tri[1] == tri[2] or tri[0] == tri[2]: continue
 		for v in tri: st.set_uv(Vector2(v.x + v.z, v.y * 1.4)); st.add_vertex(v)
 	st.generate_normals(); st.generate_tangents()
-	var mi := MeshInstance3D.new(); mi.mesh = st.commit(); mi.material_override = Palette.get_mat("roof_tile"); roof.add_child(mi)
+	var mi := MeshInstance3D.new(); mi.mesh = st.commit(); mi.material_override = Palette.get_mat("slate_roof" if harbor else "roof_tile"); roof.add_child(mi)
 	(mi.material_override as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
 
 func _decor() -> void:
@@ -221,6 +228,8 @@ func _decor() -> void:
 	_mesh(beds.commit(), Palette.get_mat("leaf"))
 	var fm := StandardMaterial3D.new(); fm.vertex_color_use_as_albedo = true; fm.roughness = 0.7
 	_mesh(flowers.commit(), fm, Vector3.ZERO, false)
+	if harbor:
+		return
 	var fence := SurfaceTool.new(); fence.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var post := BoxMesh.new(); post.size = Vector3(0.08, 0.7, 0.08)
 	var gates := LotLayouts.cells_of(_lay, "G")
@@ -268,6 +277,8 @@ static func make_furniture(item: String, cell: Vector2i, rot: int, fid: String =
 	return root
 
 func sync_characters(delta: float, minute: int) -> void:
+	if harbor:
+		harbor.update_finds(sim.state["harbor_stay"]["finds"])
 	var speed := int(Simulation.SPEED_TICKS[int(sim.state["speed"])])
 	var present := {}
 	for ch in sim.chars_on(lid):
