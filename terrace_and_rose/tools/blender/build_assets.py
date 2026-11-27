@@ -495,6 +495,24 @@ def furniture():
         for i in range(7): p.append(prim('box', 'bk', cols[(i + k) % 4], (-0.38 + i * 0.06, 0.02, z + 0.13), (0.045, 0.28, 0.22 + 0.04 * ((i * 7) % 3))))
     p.append(prim('sphere', 'vase', 'ceramic', (0.25, 0, 1.08), (0.08, 0.08, 0.1))); p.append(prim('cyl', 'jar', 'terracotta', (0.25, 0, 1.52), (0.07, 0.07, 0.18), seg=16))
     item('shelf', p)
+    # shop furniture: register counter (customer side -Y, staff side +Y), glass display case, flower stand
+    p = [prim('box', 'base', W, (0, 0, 0.5), (0.98, 0.5, 1.0)), prim('box', 'top', 'stone_top', (0, 0, 1.02), (1.0, 0.54, 0.04)),
+         prim('box', 'front', 'teal_paint', (0, -0.252, 0.5), (0.9, 0.01, 0.8)),
+         prim('box', 'till', 'brass', (0.22, 0.05, 1.12), (0.3, 0.26, 0.16)), prim('box', 'screen', 'glass', (0.22, 0.0, 1.27), (0.24, 0.02, 0.14), rot=(0.4, 0, 0)),
+         prim('cyl', 'jar', 'glass', (-0.25, -0.05, 1.12), (0.08, 0.08, 0.18), seg=16), prim('box', 'pastry', 'terracotta', (-0.25, -0.05, 1.08), (0.1, 0.1, 0.05))]
+    item('register', p)
+    p = [prim('box', 'base', W, (0, 0, 0.35), (0.98, 0.5, 0.7)), prim('box', 'glass', 'glass', (0, -0.05, 0.95), (0.96, 0.42, 0.5)),
+         prim('box', 'shelf', 'stone_top', (0, 0, 0.72), (0.94, 0.44, 0.03))]
+    for i in range(5): p.append(prim('sphere', 'bun', 'terracotta', (-0.36 + i * 0.18, -0.05, 0.79), (0.07, 0.07, 0.045), u=12, v=8))
+    for i in range(3): p.append(prim('cyl', 'loaf', 'walnut', (-0.3 + i * 0.3, 0.05, 1.0), (0.06, 0.06, 0.22), rot=(0, math.pi / 2, 0), seg=12))
+    item('display_case', p)
+    p = [prim('box', 'step1', W, (0, 0.1, 0.2), (0.96, 0.3, 0.4)), prim('box', 'step2', W, (0, -0.1, 0.45), (0.96, 0.28, 0.08))]
+    rnd2 = random.Random(9); cols = ['terracotta', 'linen', 'teal_paint', 'leaf']
+    for i in range(6):
+        x = -0.38 + i * 0.15; z0 = 0.42 if i % 2 else 0.52
+        p.append(prim('cyl', 'bucket', 'brass', (x, -0.1 if i % 2 else 0.1, z0), (0.06, 0.06, 0.14), seg=12))
+        for k in range(5): p.append(prim('sphere', 'bloom', cols[(i + k) % 3], (x + rnd2.uniform(-0.05, 0.05), (-0.1 if i % 2 else 0.1) + rnd2.uniform(-0.05, 0.05), z0 + 0.2 + rnd2.uniform(0, 0.12)), (0.045, 0.045, 0.04), u=10, v=6))
+    item('flower_stand', p)
     for n, o in items.items(): export([o], OUT('models', 'furniture', n + '.glb'))
     # ---- building modules
     b = {}

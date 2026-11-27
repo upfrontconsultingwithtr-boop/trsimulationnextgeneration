@@ -27,9 +27,17 @@ const ITEMS := {
 		"model": "res://assets/models/furniture/plant.glb", "actions": [], "slots": []},
 	"shelf": {"name": "Walnut Shelf", "price": 7000, "size": [2, 1], "layer": "object", "height": 1.8,
 		"model": "res://assets/models/furniture/shelf.glb", "actions": [], "slots": []},
+	"register": {"name": "Shop Register", "price": 40000, "size": [2, 1], "layer": "object", "height": 1.1,
+		"model": "res://assets/models/furniture/register.glb", "actions": ["work_register", "order"],
+		"slots": [{"approach": [[0, -1], [1, -1]], "face": 0, "pose": "stand", "role": "staff"},
+			{"approach": [[0, 1], [1, 1]], "face": 2, "pose": "stand", "role": "customer"}]},
+	"display_case": {"name": "Bakery Display Case", "price": 30000, "size": [2, 1], "layer": "object", "height": 1.2,
+		"model": "res://assets/models/furniture/display_case.glb", "actions": [], "slots": []},
+	"flower_stand": {"name": "Flower Stand", "price": 15000, "size": [2, 1], "layer": "object", "height": 0.9,
+		"model": "res://assets/models/furniture/flower_stand.glb", "actions": [], "slots": []},
 }
 
-const ORDER := ["chair", "table", "bed", "prep_counter", "lamp", "rug", "plant", "shelf"]
+const ORDER := ["chair", "table", "bed", "prep_counter", "lamp", "rug", "plant", "shelf", "register", "display_case", "flower_stand"]
 
 static func has(item: String) -> bool:
 	return ITEMS.has(item)

@@ -109,7 +109,8 @@ static func normalize(v: Variant) -> Variant:
 	return v
 
 static func checksum(s: Dictionary) -> String:
-	return JSON.stringify(s, "", true).sha256_text()
+	# normalise first so whole-number floats (1.0) and ints (1) hash identically before and after a JSON round trip
+	return JSON.stringify(normalize(s), "", true).sha256_text()
 
 ## Structural validation; returns a list of problems (empty = valid).
 static func validate(s: Variant) -> Array[String]:

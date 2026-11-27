@@ -23,6 +23,8 @@ const DEFAULTS := {
 	"act_greet": ["Greet visitor", ["3"]],
 	"act_sit": ["Sit", ["4"]],
 	"act_sleep": ["Sleep", ["5"]],
+	"act_work": ["Work the register", ["6"]],
+	"business_panel": ["Business panel", ["O"]],
 	"act_walk_focus": ["Walk to focused object", ["G"]],
 	"focus_next": ["Focus next object", ["Tab"]],
 	"interact": ["Interact / place", ["Enter", "KP Enter"]],

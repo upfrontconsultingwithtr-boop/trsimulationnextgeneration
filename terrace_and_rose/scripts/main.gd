@@ -8,6 +8,7 @@ var creator: CreatorUI
 var preview: AvatarView
 var cheat_panel: PanelContainer
 var fade: ColorRect
+var biz_panel: BusinessPanel
 var _speed_before := 1
 var sim: Simulation
 var furn: Furnishing
@@ -37,7 +38,7 @@ var smoke_runner: RefCounted   # keep a reference so the coroutine survives its 
 func _ready() -> void:
 	InputConfig.apply()
 	var args := OS.get_cmdline_user_args()
-	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots") or args.has("--hood") or args.has("--creator")
+	WorldView.low_graphics = args.has("--low") or args.has("--smoke") or args.has("--shots") or args.has("--hood") or args.has("--creator") or args.has("--shop")
 	var ui := CanvasLayer.new(); add_child(ui)
 	var root := Control.new(); root.theme = UiTheme.make(); root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); root.mouse_filter = Control.MOUSE_FILTER_IGNORE; ui.add_child(root)
 	hud = Hud.new(); root.add_child(hud); hud.visible = false
@@ -45,6 +46,8 @@ func _ready() -> void:
 	creator = CreatorUI.new(); root.add_child(creator); creator.visible = false
 	fade = ColorRect.new(); fade.color = Color(0.08, 0.06, 0.05, 0.0); fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; root.add_child(fade)
 	popup = PopupMenu.new(); root.add_child(popup); popup.id_pressed.connect(_on_popup)
+	biz_panel = BusinessPanel.new(); root.add_child(biz_panel); biz_panel.visible = false
+	biz_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER); biz_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH; biz_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	cheat_panel = PanelContainer.new(); root.add_child(cheat_panel); cheat_panel.visible = false
 	cheat_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP); cheat_panel.position.y = 80
 	world = WorldView.new(); add_child(world)
@@ -58,10 +61,11 @@ func _ready() -> void:
 	menus.has_hood_save = saves.has_save(HOOD_SLOT)
 	_show_title_scene("mara")
 	menus.show_title()
-	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--hood") or OS.get_cmdline_user_args().has("--creator")
+	smoke = OS.get_cmdline_user_args().has("--smoke") or OS.get_cmdline_user_args().has("--shots") or OS.get_cmdline_user_args().has("--hood") or OS.get_cmdline_user_args().has("--creator") or OS.get_cmdline_user_args().has("--shop")
 	if smoke:
 		smoke_runner = SmokeTest.new(self)
-		if OS.get_cmdline_user_args().has("--creator"): smoke_runner.creator_flow()
+		if OS.get_cmdline_user_args().has("--shop"): smoke_runner.shop()
+		elif OS.get_cmdline_user_args().has("--creator"): smoke_runner.creator_flow()
 		elif OS.get_cmdline_user_args().has("--hood"): smoke_runner.hood()
 		elif OS.get_cmdline_user_args().has("--shots"): smoke_runner.quick()
 		else: smoke_runner.run()
@@ -99,6 +103,7 @@ func _wire_ui() -> void:
 	menus.switch_household.connect(_switch_household)
 	menus.toggle_inactive.connect(func(): sim.state["settings"]["inactive_progress"] = not bool(sim.state["settings"]["inactive_progress"]); menus.inactive_on = sim.state["settings"]["inactive_progress"]; menus.show_pause())
 	hud.story_choice.connect(_on_story_choice)
+	hud.business_pressed.connect(_toggle_business)
 	menus.create_household.connect(_open_creator_new)
 	menus.edit_household.connect(func(): menus.visible = false; _open_creator(sim.state, sim.state["active_household"], true))
 	menus.show_family_cb = func(): menus.show_family(sim.state, sim.state["active_household"])
@@ -235,6 +240,10 @@ func _toggle_cheats() -> void:
 	v.add_child(line); v.add_child(out)
 	cheat_panel.visible = true; line.grab_focus.call_deferred()
 
+func _toggle_business() -> void:
+	if biz_panel.visible: biz_panel.visible = false; return
+	biz_panel.open(sim)
+
 func _fade_moment(text: String) -> void:
 	hud.push_log("info", text)
 	var tw := create_tween()
@@ -294,8 +303,11 @@ func _process(delta: float) -> void:
 		while acc >= 1.0 and n < 200:
 			acc -= 1.0; n += 1; sim.tick()
 		for e in sim.events:
+			if String(e.get("lot", "")) not in ["", sim.state["active_lot"]] and e["kind"] != "story": continue   # other lots' chatter
 			if e["kind"] == "fade": _fade_moment(e["text"]); continue
 			hud.push_log(e["kind"], e["text"])
+			if e["kind"] == "sale": play("coins"); continue
+			if e["kind"] == "shift": play("chime_done"); continue
 			play({"done": "chime_done", "error": "ui_error", "arrive": "knock"}.get(e["kind"], "ui_click"))
 		sim.events.clear()
 		_open_story_if_pending()
@@ -313,6 +325,7 @@ func _process(delta: float) -> void:
 # ------------------------------------------------------------------ input
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("cheat_console") and playing: _toggle_cheats(); return
+	if e.is_action_pressed("business_panel") and playing and not story_open: _toggle_business(); return
 	if story_open or cheat_panel.visible or creator.visible: return
 	if not playing or menus.visible: 
 		if playing and e.is_action_pressed("menu"): menus.visible = false; hud.visible = true
@@ -341,6 +354,7 @@ func _live_input(e: InputEvent) -> void:
 	elif e.is_action_pressed("act_greet"): _hotkey_action("greet")
 	elif e.is_action_pressed("act_sit"): _hotkey_action("sit")
 	elif e.is_action_pressed("act_sleep"): _hotkey_action("sleep")
+	elif e.is_action_pressed("act_work"): _hotkey_action("work_register")
 	elif e.is_action_pressed("focus_next"): _cycle_focus()
 	elif e.is_action_pressed("interact") and focus_idx >= 0: _open_menu_for(focus_list[focus_idx], _screen_of(focus_list[focus_idx]))
 	elif e.is_action_pressed("act_walk_focus") and focus_idx >= 0: _walk_to_focus()

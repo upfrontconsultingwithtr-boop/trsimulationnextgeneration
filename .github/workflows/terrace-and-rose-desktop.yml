@@ -1,0 +1,65 @@
+# Builds Terrace & Rose for Windows and Linux on every push and on demand, runs the test suites,
+# and attaches the builds as downloadable artifacts (Actions tab -> latest run -> Artifacts).
+name: Terrace & Rose desktop builds
+
+on:
+  push:
+    paths: ["terrace_and_rose/**", ".github/workflows/terrace-and-rose-desktop.yml"]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.5.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: terrace_and_rose
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot ${{ env.GODOT_VERSION }} and export templates
+        run: |
+          cd /tmp
+          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip && sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o tpl.tpz https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          unzip -q -j tpl.tpz templates/linux_release.x86_64 templates/linux_debug.x86_64 templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/version.txt -d ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+          rm tpl.tpz
+          mkdir -p ~/.config/godot
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nnetwork/connection/network_mode = 0\nnetwork/connection/engine_version_update_mode = 0\n' > ~/.config/godot/editor_settings-4.5.tres
+
+      - name: Import project
+        run: timeout 300 godot --headless --path . --import || true
+
+      - name: Run tests
+        run: |
+          godot --headless --path . -s tests/lint.gd
+          godot --headless --path . -s tests/run_tests.gd
+          godot --headless --path . -s tests/genetics_tests.gd
+          godot --headless --path . -s tests/neighborhood_tests.gd
+          godot --headless --path . -s tests/family_tests.gd
+          godot --headless --path . -s tests/business_tests.gd
+
+      - name: Export Windows and Linux
+        run: |
+          mkdir -p export/windows export/linux
+          godot --headless --path . --export-release "Windows Desktop" export/windows/TerraceAndRose.exe
+          godot --headless --path . --export-release "Linux Desktop" export/linux/TerraceAndRose.x86_64
+          cp README.md ASSET_SOURCES.md export/windows/
+          cp README.md ASSET_SOURCES.md export/linux/
+          ls -la export/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TerraceAndRose-Windows
+          path: terrace_and_rose/export/windows
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TerraceAndRose-Linux
+          path: terrace_and_rose/export/linux
+          retention-days: 30

@@ -48,6 +48,28 @@ func quick() -> void:
 	await shot("q3_furnish")
 	m.get_tree().quit(0)
 
+func shop() -> void:
+	await wait(3)
+	m.start_neighborhood("rowan"); await wait(3)
+	var s: Dictionary = m.sim.state
+	for b in StoryEngine.beats(): if b["household"] == "rowan": s["story"]["fired"][b["id"]] = 0
+	s["story"]["pending"].clear(); m.story_open = false; m.hud.hide_story()
+	var bake := Business.for_lot(s, "lot_rowan")
+	await until(func(): return bake["is_open"] and bake["shift"].get("served", 0) >= 3, 120)
+	m.sim.set_speed(1)
+	m.rig.focus(Vector3(7.5, 0, 8.6), 9.0); m.rig.pitch = deg_to_rad(-40); m.rig._apply(); await wait(12)
+	check(bake["is_open"] and int(bake["shift"].get("served", 0)) >= 3, "bakery open and serving customers")
+	await shot("s1_bakery_open")
+	m._toggle_business(); await wait(6)
+	await shot("s2_business_panel")
+	m._toggle_business()
+	await until(func(): return not bake["is_open"], 600)
+	await wait(6)
+	check(not bake["last_summary"].is_empty() and bake["last_summary"]["reconciled"], "shift closed with a reconciled ledger")
+	await shot("s3_shift_summary")
+	print("SHOP: %d failures" % fails.size())
+	m.get_tree().quit(0 if fails.is_empty() else 1)
+
 func creator_flow() -> void:
 	await wait(3)
 	m._open_creator_new(); await wait(6)
@@ -150,7 +172,7 @@ func run() -> void:
 	await shot("09_furnish_blocked")
 	m._toggle_furnish()
 	# save / reload
-	var snap := JSON.stringify(m.sim.state, "", true)
+	var snap := JSON.stringify(GameState.normalize(m.sim.state), "", true)
 	m.save_game(); m.sim.advance_minutes(30); m.load_game()   # compare before any frame can tick the clock
 	var now := JSON.stringify(m.sim.state, "", true)
 	check(now == snap, "reload restores exact state")

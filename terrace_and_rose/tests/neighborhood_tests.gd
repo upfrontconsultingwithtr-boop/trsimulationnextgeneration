@@ -84,7 +84,7 @@ func _init() -> void:
 	var ss := SaveSystem.new("user://test_saves_p2")
 	check(ss.save("hood", s)["ok"], "neighborhood saves")
 	var l := ss.load_game("hood")
-	check(l["ok"] and JSON.stringify(l["state"], "", true) == JSON.stringify(s, "", true), "neighborhood reloads exactly (stories, flags, households)")
+	check(l["ok"] and JSON.stringify(l["state"], "", true) == JSON.stringify(GameState.normalize(s), "", true), "neighborhood reloads exactly (stories, flags, households)")
 	# a Milestone-1 (v1) save still loads
 	var old := GameState.new_alder_game("mara")
 	for k in ["world", "family", "settings", "story"]: old.erase(k)

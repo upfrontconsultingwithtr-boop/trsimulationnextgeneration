@@ -14,6 +14,7 @@ const ACTIONS := {
 	"sit": {"label": "Sit", "item": "sit", "minutes": 60, "anim": "sit_idle"},
 	"sleep": {"label": "Sleep", "item": "sleep", "minutes": 480, "anim": "sleep"},
 	"try_for_baby": {"label": "Try for Baby", "minutes": 30, "anim": "idle"},
+	"work_register": {"label": "Work the register", "item": "work_register", "minutes": 720, "anim": "idle"},
 }
 const DECAY := {"hunger": 8, "energy": 6, "social": 5, "comfort": 4}
 
@@ -44,8 +45,9 @@ func chars_on(lid: String) -> Array:
 func set_speed(i: int) -> void:
 	state["speed"] = clampi(i, 0, 2)
 
-func _emit(kind: String, text: String, actor: String = "") -> void:
-	events.append({"kind": kind, "text": text, "actor": actor})
+func _emit(kind: String, text: String, actor: String = "", lot_id: String = "") -> void:
+	if lot_id == "" and state["characters"].has(actor): lot_id = state["characters"][actor]["lot"]
+	events.append({"kind": kind, "text": text, "actor": actor, "lot": lot_id})
 
 # ------------------------------------------------------------------ navigation
 func rebuild_nav(lid: String) -> void:
@@ -175,6 +177,7 @@ func _on_minute() -> void:
 			ev["fired"] = true
 			_fire(ev)
 	for e in FamilyLife.update(state): _emit(e["kind"], e["text"])
+	_businesses_minute()
 	if state.has("story"):
 		for bid in StoryEngine.check(state):
 			_emit("story", StoryEngine.beat(bid)["title"], bid)
@@ -189,7 +192,8 @@ func _on_minute() -> void:
 			if k == "comfort" and (c["pose"] == "sit" or c["pose"] == "lie"): d = 0
 			_need(c, k, -d)
 		if doing != "": _perform_minute(c, cur)
-		if c["current"].is_empty() and c["queue"].is_empty() and m >= int(c["ai_next"]):
+		if c["ai"] == "customer": _customer_ai(c)
+		elif c["current"].is_empty() and c["queue"].is_empty() and m >= int(c["ai_next"]):
 			if c["ai"] == "visitor": _visitor_ai(c)
 			elif c["ai"] == "auto": _auto_ai(c)
 
@@ -278,6 +282,8 @@ func _start_object_action(c: Dictionary, a: Dictionary) -> bool:
 	if not def["actions"].has(ACTIONS[a["type"]]["item"]): return _fail(c, "%s can't do that." % def["name"])
 	var any_free := false
 	for si in def["slots"].size():
+		var role: String = def["slots"][si].get("role", "")
+		if (a["type"] == "work_register") != (role == "staff"): continue
 		var who := reserved_by(fid, si)
 		if who != "" and who != c["id"]: continue
 		any_free = true
@@ -294,7 +300,7 @@ func _start_object_action(c: Dictionary, a: Dictionary) -> bool:
 	return _fail(c, "Can't reach the %s." % def["name"])
 
 func _object_word(type: String) -> String:
-	return {"prepare_meal": "counter", "sit": "seat", "sleep": "bed", "eat": "seat"}.get(type, "object")
+	return {"prepare_meal": "counter", "sit": "seat", "sleep": "bed", "eat": "seat", "work_register": "register"}.get(type, "object")
 
 func _nearest_free(lid: String, from: Vector2i, verb: String) -> Dictionary:
 	var best := {}
@@ -305,6 +311,7 @@ func _nearest_free(lid: String, from: Vector2i, verb: String) -> Dictionary:
 		if not def["actions"].has(verb): continue
 		for si in def["slots"].size():
 			if reserved_by(fid, si) != "": continue
+			if (verb == "work_register") != (def["slots"][si].get("role", "") == "staff"): continue
 			var ap := Catalog.local_cell_to_world(f["item"], GameState.cell_of(f["cell"]), int(f["rot"]), def["slots"][si]["approach"][0])
 			var d := Vector2(from).distance_to(Vector2(ap))
 			if d < bd and walkable(lid, ap) and not find_path(lid, from, ap).is_empty():
@@ -373,6 +380,7 @@ func _perform_minute(c: Dictionary, a: Dictionary) -> void:
 			_need(c, "hunger", 300)
 			if c["pose"] == "sit": _need(c, "comfort", 20)
 		"sit": _need(c, "comfort", 60)
+		"work_register": _register_minute(c, a)
 		"sleep":
 			_need(c, "energy", 25); _need(c, "comfort", 10)
 			if int(c["needs"]["energy"]) >= GameState.NEED_MAX: a["remaining"] = 0
@@ -395,6 +403,7 @@ func _perform_minute(c: Dictionary, a: Dictionary) -> void:
 				state["relationships"][k] = r
 				_emit("done", ("%s met %s. Friendship +10." if first else "%s greeted %s. Friendship +10.") % [c["name"], t["name"]], c["id"])
 		"sit": _emit("done", "%s feels rested after sitting." % c["name"], c["id"])
+		"work_register": _emit("done", "%s finished at the register." % c["name"], c["id"])
 		"try_for_baby":
 			var r := FamilyLife.conceive(state, c["id"], a["target"], minute() * 31 + hash(c["id"]) % 997)
 			_need(c, "social", 2500); _need(c, "comfort", 1500)
@@ -440,9 +449,143 @@ func _fire(ev: Dictionary) -> void:
 			var gates := LotLayouts.cells_of(layout_id(c["lot"]), "G")
 			queue_action(c["id"], "walk", "", gates[0])
 
+# ------------------------------------------------------------------ businesses
+func _businesses_minute() -> void:
+	var m := minute()
+	var hour := (m / 60) % 24
+	for bid in state.get("businesses", {}):
+		var b: Dictionary = state["businesses"][bid]
+		var lid: String = b["lot"]
+		if not bool(state["settings"].get("inactive_progress", true)) and lid != state["active_lot"]: continue
+		var staff_here := chars_on(lid).any(func(ch): return ch["household"] == b["household"] and ch["age"] != "child")
+		if not b["is_open"] and b["auto_open"] and hour >= int(b["open_hour"]) and hour < int(b["close_hour"]) and staff_here and int(b.get("opened_day", -1)) != m / 1440:
+			var r := Business.open_shift(state, b)
+			if r["ok"]: b["opened_day"] = m / 1440; _emit_lot(lid, "info", "%s is open until %02d:00." % [b["name"], int(b["close_hour"])])
+		if b["is_open"] and hour >= int(b["close_hour"]):
+			close_business(b)
+			continue
+		if not b["is_open"]: continue
+		# integer thousandths keep saves exact
+		b["spawn_acc"] = int(b.get("spawn_acc", 0)) + int(round(Business.demand(state, b, hour) * 1000.0 / 60.0))
+		var waiting := 0
+		for ch in chars_on(lid): if ch["ai"] == "customer": waiting += 1
+		while int(b["spawn_acc"]) >= 1000:
+			b["spawn_acc"] = int(b["spawn_acc"]) - 1000
+			if waiting < Business.MAX_WAITING: _spawn_customer(b); waiting += 1
+
+func _emit_lot(lid: String, kind: String, text: String, actor: String = "") -> void:
+	_emit(kind, text, actor, lid)
+
+func close_business(b: Dictionary) -> Dictionary:
+	var r := Business.close_shift(state, b)
+	if not r["ok"]: return r
+	for ch in chars_on(b["lot"]):
+		if ch["current"].get("type", "") == "work_register": cancel_action(ch["id"], "", "Closing time — the register is closed.")
+		if ch["ai"] == "customer" and ch["cust"]["state"] != "leaving": _customer_leave(ch)
+	var sm: Dictionary = r["summary"]
+	_emit_lot(b["lot"], "shift", "%s closed: %d served, %d walked out. Revenue %s, supplies %s, profit %s.%s" % [sm["business"], sm["served"], sm["lost"] + sm["walkouts"],
+		Catalog.format_cents(sm["revenue"]), Catalog.format_cents(sm["expenses"]), Catalog.format_cents(sm["profit"]), "" if sm["reconciled"] else " (other household spending during the shift)"], b["id"])
+	return r
+
+func _spawn_customer(b: Dictionary) -> void:
+	if not state["households"].has("townies"):
+		state["households"]["townies"] = {"id": "townies", "name": "Townsfolk", "funds": 0, "members": [], "lot": "", "premade": true}
+	var rng := RandomNumberGenerator.new(); rng.seed = int(b["rng"]) * 7 + minute()
+	var look := Genetics.random_look(rng)
+	look.merge({"outfit": ["casual", "jacket", "dress", "knit_jacket"][rng.randi() % 4], "top": ["c2643f", "86bdb2", "e3b04b", "ede4d1", "4f8f86"][rng.randi() % 5], "bottom": "4d4842", "outer": "6e4b31", "knit": "ede4d1", "shoe": "3a3532", "accessories": []}, true)
+	var id := GameState.new_id(state, "cu")
+	var gates := LotLayouts.cells_of(layout_id(b["lot"]), "G")
+	var first: String = ["Ivy", "Omar", "Bea", "Felix", "Mina", "Otis", "Tess", "Ravi", "Lena", "Hugo"][rng.randi() % 10]
+	var c := GameState.make_character(id, first + " (customer)", look, "adult" if rng.randf() > 0.15 else "elder", "they/them", "townies", b["lot"], gates[rng.randi() % gates.size()], [], "")
+	c["ai"] = "customer"
+	c["cust"] = {"bid": b["id"], "state": "arrive", "order": "", "since": minute()}
+	state["characters"][id] = c
+	state["households"]["townies"]["members"].append(id)
+	queue_action(id, "walk", "", _counter_spot(b))
+
+func _register_of(b: Dictionary) -> Dictionary:
+	for fid in furniture(b["lot"]):
+		if furniture(b["lot"])[fid]["item"] == "register": return furniture(b["lot"])[fid]
+	return {}
+
+func _counter_spot(b: Dictionary) -> Vector2i:
+	var reg := _register_of(b)
+	if reg.is_empty(): return GameState.cell_of(chars_on(b["lot"])[0]["cell"])
+	var front := Catalog.local_cell_to_world("register", GameState.cell_of(reg["cell"]), int(reg["rot"]), [0, 1])
+	var taken := {}
+	for ch in chars_on(b["lot"]):
+		if ch["ai"] == "customer": taken[GameState.cell_of(ch["cell"])] = true; if not ch["current"].is_empty() and not ch["current"]["path"].is_empty(): taken[GameState.cell_of(ch["current"]["path"][-1])] = true
+	for r in range(0, 5):
+		for dx in range(-r, r + 1):
+			for dz in range(0, r + 1):
+				var cc := front + Vector2i(dx, dz)
+				if not taken.has(cc) and walkable(b["lot"], cc): return cc
+	return front
+
+func _customer_ai(c: Dictionary) -> void:
+	var cu: Dictionary = c["cust"]
+	var b: Dictionary = state["businesses"].get(cu["bid"], {})
+	if b.is_empty(): _remove_customer(c); return
+	match cu["state"]:
+		"arrive":
+			if not c["current"].is_empty() or not c["queue"].is_empty():
+				if minute() - int(cu["since"]) > 60: _customer_leave(c)
+				return
+			var pid := Business.pick_product(b, Business.rand(b))
+			var r := Business.place_order(state, b, c["id"], pid) if pid != "" else {"ok": false, "reason": "nothing on the menu"}
+			if r["ok"]:
+				cu["order"] = r["id"]; cu["state"] = "waiting"; cu["since"] = minute()
+				c["bubble"] = Business.TYPES[b["type"]]["products"][pid]["name"]
+			else:
+				if not b["shift"].is_empty(): b["shift"]["walkouts"] = int(b["shift"].get("walkouts", 0)) + 1
+				_emit("error", "%s left: %s." % [c["name"].get_slice(" ", 0), r["reason"]], c["id"])
+				_customer_leave(c)
+		"waiting":
+			var o: Dictionary = b["orders"].get(cu["order"], {})
+			if o.is_empty() or o["status"] == "cancelled": _customer_leave(c)
+			elif o["status"] == "served": c["holding"] = "meal"; _customer_leave(c)
+			elif minute() - int(cu["since"]) > Business.PATIENCE:
+				Business.cancel_order(state, b, cu["order"], "waited too long")
+				_emit("error", "%s gave up waiting and left." % c["name"].get_slice(" ", 0), c["id"])
+				_customer_leave(c)
+		"leaving":
+			if c["current"].is_empty() and c["queue"].is_empty(): _remove_customer(c)
+
+func _customer_leave(c: Dictionary) -> void:
+	c["cust"]["state"] = "leaving"
+	c["queue"].clear()
+	if not c["current"].is_empty(): _finish(c, false)
+	var gates := LotLayouts.cells_of(layout_id(c["lot"]), "G")
+	if queue_action(c["id"], "walk", "", gates[0])["ok"] == false: _remove_customer(c)
+
+func _remove_customer(c: Dictionary) -> void:
+	state["households"]["townies"]["members"].erase(c["id"])
+	state["characters"].erase(c["id"])
+
+func _register_minute(c: Dictionary, a: Dictionary) -> void:
+	var b := Business.for_lot(state, c["lot"])
+	if b.is_empty() or not b["is_open"]:
+		a["remaining"] = 0; return
+	a["remaining"] = maxi(int(a["remaining"]), 2)
+	if String(a.get("serving", "")) == "":
+		var oid := Business.next_waiting(b)
+		if oid == "": c["anim"] = "idle"; return
+		a["serving"] = oid
+		a["serve_left"] = int(Business.TYPES[b["type"]]["products"][b["orders"][oid]["product"]]["prep"])
+		c["anim"] = "cook"
+	a["serve_left"] = int(a["serve_left"]) - 1
+	if int(a["serve_left"]) > 0: return
+	var r := Business.serve_order(state, b, a["serving"])
+	a["serving"] = ""
+	if r["ok"]: _emit("sale", "Sold %s for %s." % [r["product"], Catalog.format_cents(r["price"])], c["id"])
+
 ## Simple needs-driven autonomy for everyone the player isn't controlling.
 func _auto_ai(c: Dictionary) -> void:
 	c["ai_next"] = minute() + 20
+	var biz := Business.for_lot(state, c["lot"])
+	if not biz.is_empty() and biz["is_open"] and biz["household"] == c["household"] and c["age"] != "child" and int(c["needs"]["energy"]) > 2000:
+		var someone := chars_on(c["lot"]).any(func(o): return o["current"].get("type", "") == "work_register" or o["queue"].any(func(q): return q["type"] == "work_register"))
+		if not someone: queue_action(c["id"], "work_register"); return
 	var n: Dictionary = c["needs"]
 	var cid: String = c["id"]
 	if c["holding"] == "meal": queue_action(cid, "eat"); return

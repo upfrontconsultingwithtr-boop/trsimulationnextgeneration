@@ -118,6 +118,9 @@ const LAYOUTS := {
 			["plant", 4, 21, 0],
 			["plant", 27, 21, 0],
 			["rug", 13, 17, 0],
+			["register", 14, 17, 0],
+			["display_case", 11, 15, 0],
+			["display_case", 17, 15, 0],
 			["plant", 10, 23, 0],
 			["plant", 21, 23, 0],
 		],
@@ -246,6 +249,8 @@ const LAYOUTS := {
 			["plant", 13, 18, 0],
 			["plant", 19, 18, 0],
 			["plant", 25, 19, 0],
+			["register", 17, 19, 0],
+			["flower_stand", 21, 20, 0],
 		],
 	},
 	"willow_lot": {

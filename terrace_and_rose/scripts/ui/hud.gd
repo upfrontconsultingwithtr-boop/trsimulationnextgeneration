@@ -12,6 +12,7 @@ signal undo_pressed
 signal redo_pressed
 signal menu_pressed
 signal story_choice(beat_id: String, idx: int)
+signal business_pressed
 
 var clock: Label
 var funds: Label
@@ -76,11 +77,12 @@ func _ready() -> void:
 	var bp := _panel(bottom); var bv := VBoxContainer.new(); bp.add_child(bv)
 	focus_label = Label.new(); focus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; bv.add_child(focus_label)
 	action_bar = HBoxContainer.new(); action_bar.add_theme_constant_override("separation", 8); bv.add_child(action_bar)
-	for a in [["prepare_meal", "act_prepare"], ["eat", "act_eat"], ["greet", "act_greet"], ["sit", "act_sit"], ["sleep", "act_sleep"]]:
+	for a in [["prepare_meal", "act_prepare"], ["eat", "act_eat"], ["greet", "act_greet"], ["sit", "act_sit"], ["sleep", "act_sleep"], ["work_register", "act_work"]]:
 		var b := Button.new(); b.focus_mode = Control.FOCUS_NONE
 		b.text = "%s  %s" % [InputConfig.label(a[1]), Simulation.ACTIONS[a[0]]["label"]]
 		var t: String = a[0]; b.pressed.connect(func(): action_pressed.emit(t)); action_bar.add_child(b)
 	var fb := Button.new(); fb.focus_mode = Control.FOCUS_NONE; fb.text = "%s  Furnish" % InputConfig.label("furnish_toggle"); fb.pressed.connect(func(): furnish_toggled.emit()); action_bar.add_child(fb)
+	var bz := Button.new(); bz.focus_mode = Control.FOCUS_NONE; bz.text = "%s  Shop" % InputConfig.label("business_panel"); bz.pressed.connect(func(): business_pressed.emit()); action_bar.add_child(bz)
 	furnish_panel = PanelContainer.new(); bv.add_child(furnish_panel)
 	furnish_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var fv := VBoxContainer.new(); furnish_panel.add_child(fv)
@@ -173,6 +175,11 @@ func refresh(sim: Simulation, furnishing_mode: bool, wall_mode: int, focus_text:
 			fam.append("%s %s (%s, friendship %d)" % [_tie_word(t, me["id"]), sim.character(other).get("name", other).get_slice(" ", 0), String(sim.character(other).get("age", "")), int(rel.get("friendship", 0))])
 	family_label.text = ("Family & friends:\n" + "\n".join(fam)) if not fam.is_empty() else ""
 	mode_label.text = "Furnish mode" if furnishing_mode else ("Paused" if sp == 0 else "Live mode")
+	var biz := Business.for_lot(sim.state, sim.state["active_lot"])
+	if not biz.is_empty():
+		var waiting := 0
+		for o in biz["orders"].values(): if o["status"] == "waiting": waiting += 1
+		mode_label.text += "  ·  %s: %s" % [biz["name"], ("OPEN, %d waiting, sales %s" % [waiting, Catalog.format_cents(int(biz["shift"].get("sale", 0)))]) if biz["is_open"] else "closed"]
 	walls_btn.text = "Walls: %s (%s)" % [["Up", "Cutaway", "Down"][wall_mode], InputConfig.label("toggle_walls")]
 	for k in GameState.NEED_KEYS:
 		var v := int(me["needs"][k])
@@ -215,8 +222,8 @@ func _refresh_queue(me: Dictionary) -> void:
 	queue_box.add_child(hint)
 
 func push_log(kind: String, text: String) -> void:
-	var prefix: String = {"done": "Done:", "error": "Can't:", "arrive": "Visitor:", "leave": "Visitor:", "info": "Note:", "save": "Saved:"}.get(kind, "Note:")
-	var col: Color = {"done": Palette.TEAL_DEEP, "error": Palette.TERRACOTTA, "arrive": Palette.BRASS, "leave": Palette.BRASS, "save": Palette.TEAL_DEEP}.get(kind, Palette.INK)
+	var prefix: String = {"sale": "Sale:", "shift": "Shift:", "done": "Done:", "error": "Can't:", "arrive": "Visitor:", "leave": "Visitor:", "info": "Note:", "save": "Saved:"}.get(kind, "Note:")
+	var col: Color = {"sale": Palette.TEAL_DEEP, "shift": Palette.BRASS, "done": Palette.TEAL_DEEP, "error": Palette.TERRACOTTA, "arrive": Palette.BRASS, "leave": Palette.BRASS, "save": Palette.TEAL_DEEP}.get(kind, Palette.INK)
 	var l := Label.new(); l.text = "%s %s" % [prefix, text]; l.add_theme_color_override("font_color", col)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; l.custom_minimum_size.x = 330
 	log_box.add_child(l)

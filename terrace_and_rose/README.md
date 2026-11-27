@@ -6,6 +6,12 @@ It is offline and desktop-first, uses local saves, and costs $0 to develop: no p
 **Milestone 1 — A Day at Alder Bungalow** (this build): pick an avatar preset, live one day in a furnished
 16 × 16 m bungalow, cook and eat, greet the neighbor who visits at 10:00, sit, sleep, and furnish the home with undo/redo.
 
+## Download (Windows / Linux)
+Every push builds the game automatically. Open the GitHub repository and go to **Actions**, then **Terrace & Rose desktop builds**.
+Pick the latest green run and download **TerraceAndRose-Windows** or **TerraceAndRose-Linux** under *Artifacts*. You must be signed in to GitHub.
+Unzip it and run `TerraceAndRose.exe` on Windows or `TerraceAndRose.x86_64` on Linux. Builds are kept for 30 days.
+Windows may show a SmartScreen warning because the build isn't code-signed (signing certificates cost money). Choose *More info* and then *Run anyway*.
+
 ## Run it
 1. Install Godot **4.5.1-stable** (standard build, not .NET) from https://godotengine.org/download.
 2. Open Godot, choose **Import**, and select `terrace_and_rose/project.godot`. Then press **Run (F5)**.
@@ -52,6 +58,15 @@ Commit `data/cheat_public_key.pem` and rebuild the game. To use a code in game, 
 Commands: `money 500`, `needs max`, `time +3`, `speed 2`, `aging on|off`, `ageup <name>`, `pregnant <name>`, `flag <story_flag>`, `skipstory`.
 Codes can't be forged without your private key, and a code only works for the name it was issued to. Because the game is offline, someone
 determined could still modify the program itself, so treat this as access control for friends, not anti-piracy.
+
+## Businesses
+The Rowans run **Rowan & Rye Bakery** (07:00–14:00) and the Alvarezes run **Petal & Pine** (10:00–17:00). This is sample starting stock.
+Press **O** (Shop) to rename the business, set hours, set menu prices, turn items on and off, buy stock, open or close, and review the shift and ledger.
+Someone has to work the register: press **6**, or family members will do it on their own. Customers order and wait, then pay or walk out.
+- **Orders:** an order reserves its ingredients. A cancelled or abandoned order releases them, and only served orders consume stock and earn money.
+- **Prices:** higher prices bring fewer customers. Reputation and story outcomes (such as supplying the inn, flowers in the lobby, or Rose & Rye) raise demand.
+- **Shift summary:** closing reports customers served and walked out, revenue, supply costs and profit, and checks that the ledger matches the change in household funds.
+Any household can start a business on its own lot: open the Shop panel, then place a **Shop Register** from Furnish.
 
 ## Desktop builds
 Export templates for 4.5.1 are free from the Godot download page (Editor → Manage Export Templates).

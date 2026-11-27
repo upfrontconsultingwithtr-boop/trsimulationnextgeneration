@@ -72,6 +72,15 @@ static func build() -> Dictionary:
 		s["family"].append({"a": t[0], "b": t[1], "type": t[2]})
 		s["relationships"][GameState.rel_key(t[0], t[1])] = {"friendship": t[3], "romance": t[4], "met": true}
 	s["characters"]["delia"]["ai"] = "player"
+	# premade businesses (sample starting stock)
+	var rb := Business.create(s, "rowan", "lot_rowan", "bakery", "Rowan & Rye Bakery")
+	var b1: Dictionary = s["businesses"][rb["id"]]
+	b1["stock"] = {"flour": 40, "butter": 15, "spice": 10, "beans": 20, "milk": 20, "sugar": 10}
+	b1["open_hour"] = 7; b1["close_hour"] = 14
+	var fb := Business.create(s, "alvarez", "lot_alvarez", "florist", "Petal & Pine")
+	var b2: Dictionary = s["businesses"][fb["id"]]
+	b2["stock"] = {"stems": 60, "wrap": 6, "pots": 3}
+	b2["open_hour"] = 10; b2["close_hour"] = 17
 	return s
 
 ## Switch which household the player controls. Returns {ok, reason}.
