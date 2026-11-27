@@ -1,0 +1,22 @@
+{
+  "name": "nextgen-life",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NextGen Life - an original browser-based 3D life simulation with a shared online neighborhood.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server/server.js",
+    "build": "vite build",
+    "start": "npm run build && node server/server.js",
+    "test": "node --test tests/"
+  },
+  "dependencies": {
+    "three": "0.170.0",
+    "ws": "8.18.0"
+  },
+  "devDependencies": {
+    "vite": "5.4.11"
+  },
+  "engines": { "node": ">=18" }
+}
