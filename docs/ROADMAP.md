@@ -3,8 +3,10 @@
 ## Vision
 
 Build an original life simulation in a believable, present-day coastal town. Detailed human characters, grounded movement, everyday routines, recognizable architecture, and consistent lighting should give the player a sense of presence from both camera perspectives. Add fantasy selectively through specific stories and places.
-Two ways to play the same character in the same persistent world:
-- **Home mode** (built in M1): the orbiting camera, needs, family, building, careers and households.
+Use free tooling such as Godot and Blender, with original or freely licensed assets. Favor reusable locations, rigs, animations, and materials to keep production costs and credit use low. Get approval before using a paid or credit-metered service.
+
+Mix the household depth of a life sim with the freedom of a third-person open world. A player can leave a family home, head into town, and return to the same household. Time, ongoing obligations, relationships, and consequences carry across both views.
+- **Home mode** (built in M1): use an orbiting camera to build a home, manage needs and relationships, raise a family, and run a business.
 - **Street mode** (new): a third-person camera you walk, run and drive through an open coastal town:
   - **Districts:** Terrace Hill homes, the Rose Market downtown, the Brineglass docks, and the industrial edge.
   - **Vehicles:** cars, scooters and boats you own, borrow or steal.
@@ -38,12 +40,13 @@ Status key: ✅ done · 🔨 in progress · ⏳ planned
 | # | Milestone | Status |
 |---|---|---|
 | P2-1 | First playable neighborhood: Rowan, Park, Bell and Alvarez households (homes, budgets, relationships, goals, stories in progress); one story with branching outcomes; household and character creator with family tree; **"child from two parents"** genetics; household switching; save/reload | 🔨 genetics module done and tested |
-| P2-2 | Build, work, travel: walls/doors/windows/floors editor with budget preview and touch controls; one complete bakery/café shift; one complete vacation; private God Mode with snapshots | 🔨 Home editor and business shifts implemented |
+| P2-2 | Build, work, travel: walls/doors/windows/floors editor with budget preview and touch controls; one complete bakery/café shift; one complete vacation; private God Mode with snapshots | 🔨 Home editor, business shifts, and private God Mode implemented |
 | P2-3 | Play together: accounts, profiles, friends, invite-only shared world (self-hosted or local server), preset interactions, mutual-consent shared family that persists; blocking, reporting, privacy | ⏳ |
 | P2-4 | Community: share households and lots, more social activities, more stories | ⏳ |
 
 ### Family life and genetics (requested)
 - Adult partners in a committed relationship can choose **Try for Baby**. Like other family life sims, it happens off-screen (a fade-out, no explicit content). It can lead to a pregnancy that lasts a set number of in-game days and ends in a birth. Adoption is available as an alternative.
+- Let players choose exclusive relationships or have multiple consenting adult partners. Show each relationship separately and let the player select the intended partner for relationship and family actions.
 - Children inherit **DNA from both parents** (`scripts/core/genetics.gd`): a skin tone blend within the parents' range, hair colour (darker pigment slightly dominant) and hair texture from either parent, body frame, height, eye colour, and one trait from each parent. There is a small chance of twins or triplets. Results are seeded, so they are reproducible and saves stay exact.
 - The **household creator** offers "Make a child from two parents" with a re-roll button, using the same genetics.
 - Online, both players must agree before any shared relationship, move-in, household change or new child, as the Part 2 brief requires. Child characters only take part in age-appropriate family gameplay.
@@ -87,6 +90,7 @@ In addition to the Gangster career, criminal paths are available for both player
 
 ## Desktop and live audience requirements
 
-- The initial desktop release is for adults. The current build uses fade-to-black intimacy. Mature and explicit adult desktop editions are requested future release tracks.
-- The live community needs age-specific experiences. Enforce access and matchmaking server-side. Keep accounts, invitations, searchable profiles, messages and shared spaces within the applicable age group. Test cross-group access before a live rollout.
-- The requested mature and explicit live editions are adult-only. Keep adult content and community features separated from youth experiences. Determine eligibility, moderation and distribution requirements before those editions launch.
+- The planned desktop release is one adult-only explicit edition. Players can opt in to visible, player-controlled intimacy between consenting adult characters and can skip or exit a scene. Intimacy fades to black in the current development build.
+- The live community will offer age-appropriate experiences across age groups. A player can discover, see, and interact only with players in the same age group.
+- Apply the same age-group rule server-side to profiles, search, presence, invitations, matchmaking, public and private spaces, chat, and shared households. Cross-group players must be absent from results and inaccessible through direct links or requests.
+- Define the age groups and how eligibility is established before opening the community. Test account changes and cross-group visibility and interaction before launch.
